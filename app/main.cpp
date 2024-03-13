@@ -1,6 +1,6 @@
 #include <iostream>
 
-#include "../src/solver.hpp"
+#include "solver.hpp"
 
 int main(){
     std::cout << "Hello world!\n";

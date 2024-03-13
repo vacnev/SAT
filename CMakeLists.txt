@@ -10,8 +10,8 @@ set(CXX_RELEASE_OPTIONS -O2)
 set(FOUSATY_LIBS
 		src/solver.cpp)
 
-
 add_executable(fousaty app/main.cpp)
 add_library(fousaty-static STATIC ${FOUSATY_LIBS})
 
+target_include_directories(fousaty PUBLIC src/)
 target_link_libraries(fousaty fousaty-static)
