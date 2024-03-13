@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.1...3.28)
 
 project(fousaty)
 
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 20)
 set(CXX_OPTIONS -Wall -Wextra -Werror)
 set(CXX_DEBUG_OPTIONS -g)
 set(CXX_RELEASE_OPTIONS -O2)
