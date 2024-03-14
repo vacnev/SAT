@@ -5,10 +5,61 @@
 #include <map>
 #include <optional>
 #include <utility>
+#include <queue>
 
 using var_t = int;
 using lit_t = int;
 using lbool = std::optional< bool >;
+
+struct assignment {
+    std::size_t vars_count;
+    std::vector< lbool > asgn;
+
+    // EVSIDS
+    // std::priority_queue< std::pair< double, var_t > > pq; // might aswell struct HEAP
+    // double inc = 1;
+
+    // phase
+
+    assignment(std::size_t count) : vars_count(count), asgn(count) {}
+
+    /* iff all assigned then 0 */
+    var_t get_unassigned() const {
+        // var_t var;
+        // while ( asgn[pq.top().second] ) {
+        //     var = pq.top().second;
+        //     pq.pop();
+        //     // pq.emplace(1, var);
+        // }
+
+        // var = pq.top().second;
+        // pq.pop();
+        // return var;
+
+        for ( std::size_t i; i < vars_count; ++i) {
+            if ( !asgn[i] ) {
+                return i;
+            }
+        }
+
+        return 0;
+    }
+
+    // void increase_priority(const clause& cl) {
+    //     for ( lit_t lit : cl.data() ) {
+    //         var_t var = std::abs(lit);
+
+    //     }
+    // }
+
+    lbool& operator[](var_t var) {
+        return asgn[var];
+    }
+
+    void unassign(var_t var) {
+        asgn[var] = std::nullopt;
+    }
+};
 
 struct clause {
     
@@ -46,7 +97,7 @@ struct clause {
     }
 
     // move watch
-    void resolve_watched(int clause_index, lit_t lit, std::map< var_t, lbool >& asgn, std::map< lit_t, std::vector< int > >& occurs) {
+    void resolve_watched(int clause_index, lit_t lit, assignment& asgn, std::map< lit_t, std::vector< int > >& occurs) {
         if ( status == UNIT ) {
             status = CONFLICT;
             return;
@@ -92,8 +143,9 @@ struct clause {
 struct formula {
     std::vector< clause > base;
     std::vector< clause > learnt;
+    std::size_t var_count;
 
-    formula(std::vector< clause > _base) : base(std::move(_base)) {}
+    formula(std::vector< clause > _base, std::size_t count) : base(std::move(_base)), var_count(count) {}
 
     clause& operator[]( std::size_t index ) {
         if ( index >= base.size() ) {
