@@ -4,7 +4,7 @@
 #include <vector>
 #include <map>
 #include <optional>
-#include <pair>
+#include <utility>
 
 void ahoj();
 
@@ -45,7 +45,11 @@ struct clause {
         }
 
         auto [l1, l2] = watched_lits();
-        auto& [m1, m2] = ( lit == l1 ) ? watched : { watched.second, watched.first };
+        auto& [m1, m2] = watched;
+        if ( lit != l1) {
+            using std::swap;
+            swap(m1, m2);
+        }
 
         for ( std::size_t i = 0; i < data.size(); ++i ) {
             lit_t l = data[i];
@@ -117,7 +121,7 @@ struct solver {
         while ( index < trail.size() ) {
             lit_t lit = trail[index];
 
-            for ( int i : occurs.extract(-lit) ) {
+            for ( int i : occurs.extract(-lit).mapped() ) {
                 clause& c = form[i];
                 c.resolve_watched(i, -lit, asgn, occurs);
                 if ( c.status == clause::UNIT ) {
