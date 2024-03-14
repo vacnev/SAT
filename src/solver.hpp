@@ -45,4 +45,12 @@ struct solver {
             }
         }
     }
+
+    void add_base_clause(clause c) {
+        form.add_base_clause(std::move(c));
+    }
+
+    void add_learnt_clause(clause c) {
+        form.add_learnt_clause(std::move(c));
+    }
 };
