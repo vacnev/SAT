@@ -27,6 +27,16 @@ struct clause {
 
     std::vector< lit_t > data;
 
+    clause(std::vector< lit_t > _data) : learnt(false), data(std::move(_data)) {
+        if ( data.size() == 1 ) {
+            status = UNIT;
+            watched = { 0, 0 };
+        } else {
+            status = UNDETERMINED;
+            watched = { 0 , 1 };
+        }
+    }
+
     auto size() const {
         return data.size();
     }
@@ -82,6 +92,8 @@ struct clause {
 struct formula {
     std::vector< clause > base;
     std::vector< clause > learnt;
+
+    formula(std::vector< clause > _base) : base(std::move(_base)) {}
 
     clause& operator[]( std::size_t index ) {
         if ( index >= base.size() ) {

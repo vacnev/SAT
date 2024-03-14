@@ -13,6 +13,8 @@ struct solver {
     std::vector< int > reasons; // indices into form, -1 if dec
     std::map< lit_t, std::vector< int > > occurs;
 
+    solver(formula _form) : form(std::move(_form)) {}
+
     void decide( var_t x, bool v ) {
         assign(x, v);
         decisions.push_back(trail.back());
