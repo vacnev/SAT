@@ -15,10 +15,10 @@ using lbool = std::optional< bool >;
 struct clause {
     
     enum clause_status {
-        undetermined = 0,
-        satisfied = 1,
-        conflict = 2,
-        unit = 3
+        UNDETERMINED = 0,
+        SATISFIED = 1,
+        CONFLICT = 2,
+        UNIT = 3
     };
 
     bool learnt;
@@ -84,7 +84,7 @@ struct solver {
             for ( int i : occurs[-lit] ) {
                 clause& c = form[i];
                 c.resolve_watched(lit, asgn, occurs);
-                if ( c.status == clause::unit ) {
+                if ( c.status == clause::UNIT ) {
                     lit_t l = c.watched_lits().first; 
                     assign( std::abs(l), l > 0 );
                     reasons.push_back(i);
