@@ -38,7 +38,43 @@ struct clause {
     }
 
     // move watch
-    void resolve_watched(lit_t lit, auto& asgn, auto& occurs); // change status
+    void resolve_watched(int clause_index, lit_t lit, std::map< var_t, lbool >& asgn, std::map< lit_t, std::vector< int > >& occurs) {
+        if ( status == UNIT ) {
+            status = CONFLICT;
+            return;
+        }
+
+        auto [l1, l2] = watched_lits();
+        auto& [m1, m2] = ( lit == l1 ) ? watched : { watched.second, watched.first };
+
+        for ( std::size_t i = 0; i < data.size(); ++i ) {
+            lit_t l = data[i];
+
+            if (l == l1 || l == l2) {
+                continue;
+            }
+
+            if ( !asgn[std::abs(l)] ) {
+                m1 = i;
+                occurs[l].push_back(clause_index);
+                return;
+            }
+        }
+
+        m1 = m2;
+        lit_t l = data[m1];
+        lbool v = asgn[std::abs(l)];
+        if ( v ) {
+            if ( *v && l > 0) {
+                status = SATISFIED;
+            } else {
+                status = CONFLICT;
+            }
+            // occurs[l].erase(clause_index); // is needed?
+        } else {
+            status = UNIT;
+        }
+    }
 };
 
 struct formula {
@@ -81,12 +117,13 @@ struct solver {
         while ( index < trail.size() ) {
             lit_t lit = trail[index];
 
-            for ( int i : occurs[-lit] ) {
+            for ( int i : occurs.extract(-lit) ) {
                 clause& c = form[i];
-                c.resolve_watched(lit, asgn, occurs);
+                c.resolve_watched(i, -lit, asgn, occurs);
                 if ( c.status == clause::UNIT ) {
                     lit_t l = c.watched_lits().first; 
                     assign( std::abs(l), l > 0 );
+                    // c.status = clause::SATISFIED; // is needed?
                     reasons.push_back(i);
                 }
             }
