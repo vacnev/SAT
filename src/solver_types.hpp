@@ -5,10 +5,71 @@
 #include <map>
 #include <optional>
 #include <utility>
+#include <queue>
+#include <algorithm>
 
 using var_t = int;
 using lit_t = int;
 using lbool = std::optional< bool >;
+
+struct assignment {
+    std::size_t vars_count;
+    std::vector< lbool > asgn;
+
+    // EVSIDS
+    double inc = 1.01;
+    std::vector< std::pair< double, var_t > > heap;
+
+    // phase
+
+    assignment(std::size_t count) : vars_count(count), asgn(count + 1) {
+        for ( std::size_t i = 1; i <= count; ++i ) {
+            heap.emplace_back(1, i); // add random init
+            std::make_heap(heap.begin(), heap.end());
+        }
+    }
+
+    /* iff all assigned then 0 */
+    var_t get_unassigned() const {
+        // EVSIDS
+        // while ( asgn[heap.front().second] ) {
+        //     std::pop_heap(heap.front(), heap.back());
+        //     heap.pop_back();
+        //     // kdy vracet, muzeme jen drzet back it misto pop_back
+        // }
+
+        // if ( !heap.empty() ) {
+        //     var_t var = heap.front();
+        //     std::pop_heap(heap.front(), heap.back());
+        //     heap.pop_back();
+        //     return var;
+        // }
+
+        // naive
+        for ( std::size_t i; i < vars_count; ++i) {
+            if ( !asgn[i] ) {
+                return i;
+            }
+        }
+
+        return 0;
+    }
+
+    // void increase_priority(const std::vector< lit_t >& cl) {
+    //     for ( lit_t lit : cl ) {
+    //         var_t var = std::abs(lit);
+
+    //     }
+    // }
+
+    lbool& operator[](var_t var) {
+        return asgn[var];
+    }
+
+    void unassign(var_t var) {
+        asgn[var] = std::nullopt;
+    }
+};
 
 struct clause {
     
@@ -46,7 +107,7 @@ struct clause {
     }
 
     // move watch
-    void resolve_watched(int clause_index, lit_t lit, std::map< var_t, lbool >& asgn, std::map< lit_t, std::vector< int > >& occurs) {
+    void resolve_watched(int clause_index, lit_t lit, assignment& asgn, std::map< lit_t, std::vector< int > >& occurs) {
         if ( status == UNIT ) {
             status = CONFLICT;
             return;
@@ -92,8 +153,9 @@ struct clause {
 struct formula {
     std::vector< clause > base;
     std::vector< clause > learnt;
+    std::size_t var_count;
 
-    formula(std::vector< clause > _base) : base(std::move(_base)) {}
+    formula(std::vector< clause > _base, std::size_t count) : base(std::move(_base)), var_count(count) {}
 
     clause& operator[]( std::size_t index ) {
         if ( index >= base.size() ) {
