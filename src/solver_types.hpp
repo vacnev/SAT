@@ -6,6 +6,7 @@
 #include <optional>
 #include <utility>
 #include <queue>
+#include <algorithm>
 
 using var_t = int;
 using lit_t = int;
@@ -16,26 +17,35 @@ struct assignment {
     std::vector< lbool > asgn;
 
     // EVSIDS
-    // std::priority_queue< std::pair< double, var_t > > pq; // might aswell struct HEAP
-    // double inc = 1;
+    double inc = 1.01;
+    std::vector< std::pair< double, var_t > > heap;
 
     // phase
 
-    assignment(std::size_t count) : vars_count(count), asgn(count) {}
+    assignment(std::size_t count) : vars_count(count), asgn(count + 1) {
+        for ( std::size_t i = 1; i <= count; ++i ) {
+            heap.emplace_back(1, i); // add random init
+            std::make_heap(heap.begin(), heap.end());
+        }
+    }
 
     /* iff all assigned then 0 */
     var_t get_unassigned() const {
-        // var_t var;
-        // while ( asgn[pq.top().second] ) {
-        //     var = pq.top().second;
-        //     pq.pop();
-        //     // pq.emplace(1, var);
+        // EVSIDS
+        // while ( asgn[heap.front().second] ) {
+        //     std::pop_heap(heap.front(), heap.back());
+        //     heap.pop_back();
+        //     // kdy vracet, muzeme jen drzet back it misto pop_back
         // }
 
-        // var = pq.top().second;
-        // pq.pop();
-        // return var;
+        // if ( !heap.empty() ) {
+        //     var_t var = heap.front();
+        //     std::pop_heap(heap.front(), heap.back());
+        //     heap.pop_back();
+        //     return var;
+        // }
 
+        // naive
         for ( std::size_t i; i < vars_count; ++i) {
             if ( !asgn[i] ) {
                 return i;
@@ -45,8 +55,8 @@ struct assignment {
         return 0;
     }
 
-    // void increase_priority(const clause& cl) {
-    //     for ( lit_t lit : cl.data() ) {
+    // void increase_priority(const std::vector< lit_t >& cl) {
+    //     for ( lit_t lit : cl ) {
     //         var_t var = std::abs(lit);
 
     //     }
