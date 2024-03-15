@@ -86,5 +86,9 @@ struct solver {
                 backtrack();
             }
         }
+
+        return true;
     }
+
+    
 };

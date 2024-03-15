@@ -24,8 +24,10 @@ struct assignment {
 
     assignment(std::size_t count) : vars_count(count), asgn(count + 1) {
         for ( std::size_t i = 1; i <= count; ++i ) {
-            heap.emplace_back(1, i); // add random init
-            std::make_heap(heap.begin(), heap.end());
+            heap.emplace_back( 1.0, i ); // add random init
+            asgn.emplace_back(); 
+            std::cout << asgn.back().has_value();
+            std::make_heap( heap.begin(), heap.end() );
         }
     }
 
@@ -46,7 +48,7 @@ struct assignment {
         // }
 
         // naive
-        for ( std::size_t i; i < vars_count; ++i) {
+        for ( std::size_t i = 1; i <= vars_count; ++i) {
             if ( !asgn[i] ) {
                 return i;
             }
