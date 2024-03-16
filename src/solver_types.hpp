@@ -22,11 +22,9 @@ struct assignment {
 
     // phase
 
-    assignment(std::size_t count) : vars_count(count), asgn(count + 1) {
+    assignment(std::size_t count) : vars_count( count ), asgn( count + 1 ) {
         for ( std::size_t i = 1; i <= count; ++i ) {
             heap.emplace_back( 1.0, i ); // add random init
-            asgn.emplace_back(); 
-            std::cout << asgn.back().has_value();
             std::make_heap( heap.begin(), heap.end() );
         }
     }
@@ -91,7 +89,11 @@ struct clause {
     std::vector< lit_t > data;
 
     clause(std::vector< lit_t > _data) : learnt(false), data(std::move(_data)) {
-        if ( data.size() == 1 ) {
+        if ( data.empty() ) {
+            status = CONFLICT;
+            watched = { 0, 0 };
+        }
+        else if ( data.size() == 1 ) {
             status = UNIT;
             watched = { 0, 0 };
         } else {
@@ -104,12 +106,16 @@ struct clause {
         return data.size();
     }
 
-    std::pair< lit_t, lit_t > watched_lits() {
+    std::pair< lit_t, lit_t > watched_lits() const {
         return { data[watched.first], data[watched.second] };
     }
 
-    // move watch
+    /* handles moving the two watched literals,
+     * only called in solver::unit_propagation() with negation of UPed literal */
+     
     void resolve_watched(int clause_index, lit_t lit, assignment& asgn, std::map< lit_t, std::vector< int > >& occurs) {
+
+        // if lit is the last literal, conflict
         if ( status == UNIT ) {
             status = CONFLICT;
             return;
@@ -117,11 +123,13 @@ struct clause {
 
         auto [l1, l2] = watched_lits();
         auto& [w1, w2] = watched;
-        if ( lit != l1) {
+        
+        if (lit != l1) {
             using std::swap;
-            swap(w1, w2);
+            swap( w1, w2 );
         }
 
+        // find unassigned literal
         for ( std::size_t i = 0; i < data.size(); ++i ) {
             lit_t l = data[i];
 
@@ -129,23 +137,26 @@ struct clause {
                 continue;
             }
 
+            // found new unassigned, adjust occurs
             if ( !asgn[std::abs(l)] ) {
                 w1 = i;
-                occurs[l].push_back(clause_index);
+                occurs[l].push_back( clause_index );
                 return;
             }
         }
 
+        // if none was found, set w1 to w2
         w1 = w2;
         lit_t l = data[w1];
         lbool v = asgn[std::abs(l)];
+
+        // if w2 is assigned true, then the clause is sat, otherwise conflict
         if ( v ) {
             if ( *v && l > 0) {
                 status = SATISFIED;
             } else {
                 status = CONFLICT;
             }
-            // occurs[l].erase(clause_index); // is needed?
         } else {
             status = UNIT;
         }
@@ -155,9 +166,13 @@ struct clause {
 struct formula {
     std::vector< clause > base;
     std::vector< clause > learnt;
+    
+    std::size_t clause_count;
     std::size_t var_count;
 
-    formula(std::vector< clause > _base, std::size_t count) : base(std::move(_base)), var_count(count) {}
+    formula( std::vector< clause > _base, std::size_t count_c, std::size_t count_v ) : base(std::move( _base )), 
+                                                                                       clause_count( count_c ),
+                                                                                       var_count( count_v ) {}
 
     clause& operator[]( std::size_t index ) {
         if ( index >= base.size() ) {
@@ -167,6 +182,13 @@ struct formula {
         }
     }
 
+    const clause& operator[]( std::size_t index ) const {
+        if ( index >= base.size() ) {
+            return learnt[index - base.size()];
+        } else {
+            return base[index];
+        }
+    }
     void add_base_clause(clause c) {
         base.push_back(std::move(c));
     }

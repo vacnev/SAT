@@ -52,7 +52,6 @@ formula parse_dimacs( const std::string &filename ) {
     std::getline( input, line );
 
 
-    std::cout << "ahoj" << std::endl;
     while ( line.empty() || line[0] == 'c' ) { std::getline( input, line ); }
     
 
@@ -74,8 +73,6 @@ formula parse_dimacs( const std::string &filename ) {
 
     std::vector< clause > clause_list;
     clause_list.reserve( num_clauses );
-    
-    std::cout << num_vars << num_clauses << std::endl;
 
     std::vector< lit_t > curr_literals;
 
@@ -104,7 +101,7 @@ formula parse_dimacs( const std::string &filename ) {
     }
 
 
-    return formula( std::move( clause_list ), num_vars );
+    return formula( std::move( clause_list ), num_clauses, num_vars );
 }
 
 

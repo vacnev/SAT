@@ -5,10 +5,8 @@
 
 int main(){
     std::cout << "Hello world!\n";
-    ahoj();
 
-
-    formula f = parse_dimacs("../test/all_satisfiable/uf20-0100.cnf");
+    formula f = parse_dimacs("../test/all_satisfiable/uf20-01.cnf");
     solver s( std::move( f ) );
 
     std::string res = s.solve() ? "SAT" : "UNSAT";
