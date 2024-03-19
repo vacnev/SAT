@@ -83,7 +83,8 @@ struct solver {
         auto model = get_model();
         std::string model_str;
         for ( int i = 1; i <= model.size(); ++i ){
-            model_str += std::to_string( i )+ " : " + std::to_string( model[i-1] ) + "\n";
+            model_str += std::to_string( i ) + " : " + std::to_string( model[i-1] ) + "\n";
+            
         }
         return model_str;        
     }

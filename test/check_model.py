@@ -1,4 +1,4 @@
-
+import sys
 # model file is of format var : valuation \in {0, 1}
 
 def parse_model( model_file ):
@@ -56,12 +56,17 @@ def verify_model( filename, model_file ):
             val = model[var]
             sat = sat or ( neg and val == '0' ) or ( not neg and val == '1' )
 
-        print(clause, sat)
         if not sat:
             return False
     return True
 
 
-print(verify_model("all_satisfiable/uf20-0478.cnf", "model_file.txt"))
+if __name__ == "__main__":
+    model_path = sys.argv[1]
+    dimacs_path = sys.argv[2]
+
+    if not verify_model( dimacs_path, model_path ):
+        print( "Incorrect model for", dimacs_path )
+
 
 

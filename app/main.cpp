@@ -11,7 +11,7 @@ int main( int argc, char *argv[] ){
     }
 
     std::string res;
-    std::string model_output = "../test/model_file";
+    std::string model_output = "../test/model_file.txt";
 
     for ( int i = 1; i < argc; ++i ) {
         formula f = parse_dimacs( argv[i] );
@@ -19,7 +19,7 @@ int main( int argc, char *argv[] ){
         res = s.solve() ? "SAT" : "UNSAT";
         std::cout << res << "\n";
 
-        s.output_model( model_output + "_" + argv[i] );
+        s.output_model( model_output );
     }
 
     return 0;
