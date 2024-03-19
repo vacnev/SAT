@@ -132,7 +132,7 @@ struct clause {
     }
 
 
-    /* input condition:
+    /** input condition:
      *      clause watched store indices of two unassigned literals
      *      (or one which is true)
      *          
@@ -151,7 +151,7 @@ struct clause {
      *          UNDETERMINED - if nothing else needs to be done
      *          SATISFIED - if one of the watched literals is currently
      *          satisfied under asgn
-     */
+     **/
      
     clause_status resolve_watched(int clause_index, lit_t lit, assignment& asgn, std::map< lit_t, std::vector< int > >& occurs) {
 
@@ -163,6 +163,7 @@ struct clause {
             using std::swap;
             swap( w1, w2 );
         }
+
         // find unassigned literal
         for ( std::size_t i = 0; i < data.size(); ++i ) {
             lit_t l = data[i];
@@ -171,6 +172,7 @@ struct clause {
                 continue;
             }
 
+            // sat lit => SATISFIED
             if ( asgn.lit_unassigned( l ) || asgn.satisfies_literal( l ) ) {
                 w1 = i;
                 auto [x, y] = watched_lits();
@@ -185,17 +187,13 @@ struct clause {
          * w1 will stay at its current index, restore its watch
          */
 
-
-
         occurs[ data[w1] ].push_back( clause_index );
 
         std::cout << std::endl << std::endl;
 
-
         std::cout << "dnf" << std::endl;
         for ( auto x : data ) {
             std::cout << x << " unassigned - " << asgn.lit_unassigned( x ) << " true" << asgn.satisfies_literal( x ) << std::endl;
-
         }
 
         std::cout << std::endl;
@@ -213,7 +211,6 @@ struct clause {
         }
         
         return SATISFIED;
-
     }
 };
 

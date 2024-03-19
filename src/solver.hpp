@@ -5,9 +5,7 @@
 struct solver {
 
     formula form;
-    // std::map< var_t, lbool > asgn;
     assignment asgn;
-
 
     /*
      * solver is in unsat state already,
@@ -108,7 +106,6 @@ struct solver {
             // adding this ad hoc solution for now 
             occurs[-lit] = {};
 
-
             int curr_entry = 0;
 
             for ( int i : clause_indices ) {
@@ -116,14 +113,11 @@ struct solver {
                 clause& c = form[i];
                 clause::clause_status status = c.resolve_watched(i, -lit, asgn, occurs);
 
-                // if c was made UNIT by prev UP, add the literal to trail 
-                // and update reasons
                 if ( status == clause::UNIT ) {
                     lit_t l = c.watched_lits().second; 
                     assign( std::abs(l), l > 0 );
                     reasons.push_back( i );
                 } 
-
                 // Conflict in UP -> some clause has -lit as the last literal
                 else if ( status == clause::CONFLICT ) {
                     std::cout << "KONFLIKKT" << std::endl;
