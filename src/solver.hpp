@@ -37,9 +37,13 @@ struct solver {
     void initialize_clause( const clause& cl, int clref ) {
         auto [l1, l2] = cl.watched_lits();
 
+        // init occurs vecs
         occurs[l1].push_back( clref );
+        occurs[l2].push_back( clref );
 
         // unit clause, setup trail for first UP
+        /* TODO: enqueue literals for first UP here, maybe even do the
+         * assignment?
         if ( cl.status == clause::UNIT ) {
             trail.push_back( l1 );
         }
@@ -47,6 +51,7 @@ struct solver {
         else {
             occurs[l2].push_back( clref );
         }
+        */
 
     }
     
@@ -80,35 +85,51 @@ struct solver {
      */
     bool unit_propagation() {
 
+        std::cout << "UNIT PROP: \n";
+        for ( auto x : trail ) {
+            std::cout << x << ", ";
+        }
+
+        std::cout << std::endl;
+        for ( auto x : decisions ) {
+            std::cout << x << ", ";
+        }
+
+        std::cout << std::endl << std::endl;
+
         while ( index < trail.size() ) {
 
             lit_t lit = trail[index++];
-            for ( auto x : trail ) {
-                std::cout << x << ", ";
-            }
-
-            std::cout << "\n\n";
 
             auto clause_indices = occurs.extract(-lit).mapped();
+
 
             // TODO: unlinking occurs[-lit] causes issues for some reason
             // adding this ad hoc solution for now 
             occurs[-lit] = {};
 
+
+
             for ( int i : clause_indices ) {
                 clause& c = form[i];
-                c.resolve_watched(i, -lit, asgn, occurs);
+                clause::clause_status status = c.resolve_watched(i, -lit, asgn, occurs);
 
                 // if c was made UNIT by prev UP, add the literal to trail 
                 // and update reasons
-                if ( c.status == clause::UNIT ) {
-                    lit_t l = c.watched_lits().first; 
+                if ( status == clause::UNIT ) {
+                    lit_t l = c.watched_lits().second; 
                     assign( std::abs(l), l > 0 );
                     reasons.push_back( i );
                 } 
 
                 // Conflict in UP -> some clause has -lit as the last literal
-                else if ( c.status == clause::CONFLICT ) {
+                else if ( status == clause::CONFLICT ) {
+                    std::cout << "KONFLIKKT" << std::endl;
+
+                    // return clause indices that would be dropped
+                    for ( int j = i+1; j < clause_indices.size(); j++ )
+                        occurs[-lit].push_back( clause_indices[j] );
+
                     return false; // UNSAT
                 }
             }
@@ -150,14 +171,22 @@ struct solver {
         // first UP
         if ( !unit_propagation() ) { return false; } 
 
+        bool backtracked = false;
+
         while ( var_t var = asgn.get_unassigned() ) {
 
-            decide(var, false);
+            if ( !backtracked )
+                decide(var, false);
+
+            backtracked = false;
+
             if ( !unit_propagation() ) {
                 if ( decisions.empty() ) {
                     return false;
                 }
 
+            
+                backtracked = true;
                 backtrack();
             }
         }

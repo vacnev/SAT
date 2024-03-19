@@ -29,6 +29,7 @@ struct assignment {
         }
     }
 
+
     /* iff all assigned then 0 */
     var_t get_unassigned() const {
         // EVSIDS
@@ -69,6 +70,26 @@ struct assignment {
     void unassign(var_t var) {
         asgn[var] = std::nullopt;
     }
+
+    bool var_unassigned( var_t var ) const {
+        return !asgn[var];
+    }
+
+    bool lit_unassigned( lit_t lit ) const {
+        return var_unassigned( std::abs( lit ) );
+    }
+
+    // input condition: only called on literals that are assigned
+    // returns whether this literal is satisfied by assignment
+    bool satisfies_literal( lit_t lit ) {
+        if ( lit_unassigned( lit ) )
+            return false;
+
+        // ( lit > 0 ) true iff positive literal
+        // asgn[ ... ] true iff variable is assigned true
+        return asgn[std::abs( lit )] == ( lit > 0 );
+    }
+
 };
 
 struct clause {
@@ -110,25 +131,38 @@ struct clause {
         return { data[watched.first], data[watched.second] };
     }
 
-    /* handles moving the two watched literals,
-     * only called in solver::unit_propagation() with negation of UPed literal */
-     
-    void resolve_watched(int clause_index, lit_t lit, assignment& asgn, std::map< lit_t, std::vector< int > >& occurs) {
 
-        // if lit is the last literal, conflict
-        if ( status == UNIT ) {
-            status = CONFLICT;
-            return;
-        }
+    /* input condition:
+     *      clause watched store indices of two unassigned literals
+     *      (or one which is true)
+     *          
+     *      only called after literal l is assigned either through decide() or
+     *      unit_propagation(), with arg lit equal to -l. 
+     *
+     *      only called on clauses where -l is one of the watched literals, i.e. clause is present
+     *      in occurs[-l].
+     *
+     *      returns status signal:
+     *          UNIT if unit propagation is needed for this clause, with the
+     *          unit propped literal stored as the second entry of
+     *          watched_lits()
+     *
+     *          CONFLICT - self explanatory
+     *          UNDETERMINED - if nothing else needs to be done
+     *          SATISFIED - if one of the watched literals is currently
+     *          satisfied under asgn
+     */
+     
+    clause_status resolve_watched(int clause_index, lit_t lit, assignment& asgn, std::map< lit_t, std::vector< int > >& occurs) {
 
         auto [l1, l2] = watched_lits();
+        std::cout << "watching with" << lit << "; " << l1 << " " << l2 << "\n";
         auto& [w1, w2] = watched;
         
         if (lit != l1) {
             using std::swap;
             swap( w1, w2 );
         }
-
         // find unassigned literal
         for ( std::size_t i = 0; i < data.size(); ++i ) {
             lit_t l = data[i];
@@ -137,29 +171,52 @@ struct clause {
                 continue;
             }
 
-            // found new unassigned, adjust occurs
-            if ( !asgn[std::abs(l)] ) {
+            if ( asgn.lit_unassigned( l ) || asgn.satisfies_literal( l ) ) {
                 w1 = i;
+                auto [x, y] = watched_lits();
+                std::cout << x << " " << y << "\n";
                 occurs[l].push_back( clause_index );
-                return;
+                return UNDETERMINED;
             }
         }
 
-        // if none was found, set w1 to w2
-        w1 = w2;
-        lit_t l = data[w1];
-        lbool v = asgn[std::abs(l)];
+        /*
+         * did not find new index for w1
+         * w1 will stay at its current index, restore its watch
+         */
 
-        // if w2 is assigned true, then the clause is sat, otherwise conflict
-        if ( v ) {
-            if ( *v && l > 0) {
-                status = SATISFIED;
-            } else {
-                status = CONFLICT;
-            }
-        } else {
-            status = UNIT;
+
+
+        occurs[ data[w1] ].push_back( clause_index );
+
+        std::cout << std::endl << std::endl;
+        for ( auto x : occurs[15] ) {
+            std::cout << x << " ";
         }
+
+
+        std::cout << "dnf" << std::endl;
+        for ( auto x : data ) {
+            std::cout << x << " unassigned - " << asgn.lit_unassigned( x ) << " true" << asgn.satisfies_literal( x ) << std::endl;
+
+        }
+
+        std::cout << std::endl;
+
+        lit_t l = data[w2];
+
+        // if second watch is unassigned, unit prop
+        if ( asgn.lit_unassigned( l ) ) {
+            return UNIT;
+        }
+
+        // if the second watch is unsat, return conflict
+        else if ( !asgn.satisfies_literal( l ) ) {
+            return CONFLICT;
+        }
+        
+        return SATISFIED;
+
     }
 };
 
