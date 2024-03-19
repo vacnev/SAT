@@ -9,198 +9,99 @@
 
 struct solver {
 
+    // solved formula
     formula form;
+
+    /**
+     * SOLVER STATE
+     */
     assignment asgn;
 
-    /*
-     * solver is in unsat state already,
-     * used when adding clauses in the beginning
-     */
-
+    /**
+     * signals that solver is in an unsatisfiable state before the first unit
+     * propagation, (contradictory unit clauses / empty clause)
+     **/
     bool unsat = false;
-    
-    // index into trail, head of queue to propagate
-    std::size_t index;
 
+    // stores the trail (assigned literals)
     std::vector< lit_t > trail;
 
-    std::vector< int > decisions; // indices into trail
-    std::vector< int > reasons; // indices into form, -1 if dec
+    /**
+     * stores index of first literal in _trail_ to be investigated in
+     * unit_propagate(), i.e. the head of the queue of assignments
+     **/
+    std::size_t index;
 
+    /**
+     * stores indices into _trail_ corresponding to decisions made during
+     * search that can be backtracked to 
+     */
+    std::vector< int > decisions; 
+
+    /**
+     * stores reason (clause) for each literal in _trail_ 
+     */
+    std::vector< int > reasons;
+
+    /* *
+     * tracks watched literals accros clauses, maps literals -> indices of
+     * clauses in which they are currently watched
+     */
     std::map< int, std::vector< int > > occurs;
 
+
+
+    /**
+     * CONSTRUCTORS
+     */
     solver(formula _form) : form(std::move(_form)), asgn(form.var_count) {
         initialize_structures();
     }
 
-    /* 
-     * set up state of the solver after loading formula 
-     * clref is the index of cl in form, used to setup watched lits
+
+
+    /**
+     * INIT FUNCTIONS
      */
-    void initialize_clause( const clause& cl, int clref ) {
-        auto [l1, l2] = cl.watched_lits();
+    void initialize_clause( const clause& cl, int clref );
+    void initialize_structures();
 
-        // unit clause, setup trail for first UP
-        if ( cl.status == clause::UNIT ) {
-            if ( !asgn.lit_unassigned(l1) && !asgn.satisfies_literal(l1) ) {
-                unsat = true;
-                return;
-            }
+    void add_base_clause(clause c);
+    void add_learnt_clause(clause c);
 
-            assign( l1.var(), l1.pol() );
-        } else {
-            // init occurs vecs
-            occurs[l1].push_back( clref );
-            occurs[l2].push_back( clref );
-        }
-
-    }
-    
-    // init occurs
-    void initialize_structures() {
-        for ( std::size_t i = 0; i < form.clause_count; i++ ){
-            initialize_clause( form[i], i );
-
-            if ( unsat ) {
-                return;
-            }
-        }
-
-        index = 0;
-    }
-
-
-    std::vector< bool > get_model() {
-        std::vector< bool > res( asgn.vars_count );
-
-        for ( int var = 1; var <= asgn.vars_count; ++var ) {
-            res[var-1] = asgn.satisfies_literal( var );
-        }
-        return res;
-    }
-
-    std::string get_model_string() {
-        auto model = get_model();
-        std::string model_str;
-        for ( int i = 1; i <= model.size(); ++i ){
-            model_str += std::to_string( i ) + " : " + std::to_string( model[i-1] ) + "\n";
-            
-        }
-        return model_str;        
-    }
-
-    void output_model( const std::string &filename ) {
-        std::string str = get_model_string();
-        std::ofstream out( filename, std::ios::out );
-        out << str;
-    }
-
-
-    // assigns + sets starting idx of new decision level
-    void decide( var_t x, bool v ) {
-        assign(x, v);
-        decisions.push_back(trail.size() - 1);
-        reasons.push_back(-1);
-    }
-
-    // sets x to value, adds the literal to trail
-    void assign( var_t x, bool v ) {
-        asgn[x] = v;
-        lit_t l = ( v ) ? x : -x;
-        trail.push_back(l);
-    }
-
-    /* unit propagates the literals enqueued in trail
-     * until index == trail.size() i.e. all literals 
-     * have been propagated
+    /**
+     * MODEL OUTPUT/TESTING functions
      */
-    bool unit_propagation() {
+    std::vector< bool > get_model();
+    std::string get_model_string();
+    void output_model( const std::string &filename );
 
-        while ( index < trail.size() ) {
 
-            lit_t lit = trail[index++];
 
-            auto& clause_indices = occurs[-lit];
-            auto og_size = clause_indices.size();
+    /**
+     * CORE
+     */
 
-            for ( int curr_entry = 0; curr_entry < og_size; ++curr_entry ) {
-                int i = clause_indices[curr_entry];
-                clause& c = form[i];
-                clause::clause_status status = c.resolve_watched(i, -lit, asgn, occurs);
+    // assigns val v to variable x, adds new decision level to _decisions_
+    void decide( var_t x, bool v );
 
-                if ( status == clause::UNIT ) {
-                    lit_t l = c.watched_lits().second; 
-                    assign( l.var(), l.pol() );
-                    reasons.push_back( i );
-                } 
-                // Conflict in UP -> some clause has -lit as the last literal
-                else if ( status == clause::CONFLICT ) {
+    // assigns, but without the new DL
+    void assign( var_t x, bool v );
 
-                    // return clause indices that would be dropped
-                    clause_indices.erase(clause_indices.begin(), std::next(clause_indices.begin(), curr_entry + 1));
+    /**
+     * processes all currently enqueued assignments in trail, starting 
+     * from the _index_ entry
+     */
+    bool unit_propagation();
 
-                    return false; // UNSAT
-                }
-            }
+    /**
+     * backtracks to the previous DL, flipping the last decision,
+     * as well as nullifying the resulting unit propagations,
+     */
+    void backtrack();
 
-            clause_indices.erase(clause_indices.begin(), std::next(clause_indices.begin(), og_size));
-        }
-
-        return true;
-    }
-
-    void add_base_clause(clause c) {
-        form.add_base_clause(std::move(c));
-    }
-
-    void add_learnt_clause(clause c) {
-        form.add_learnt_clause(std::move(c));
-    }
-
-    // DPLL
-    void backtrack() {
-        for ( std::size_t i = decisions.back() + 1; i < trail.size(); ++i ) {
-            asgn.unassign( trail[i].var() );
-        }
-
-        // decisions.back() contains idx to trail of last decision
-        // adjust trail accordingly
-        trail.resize( decisions.back() + 1 );
-        decisions.pop_back();
-
-        // set literal to negation, fix assignment
-        trail.back().flip();
-        var_t var = trail.back().var();
-        asgn[var] = 1 - *asgn[var];
-
-        // set head of propagation queue to last
-        index = trail.size() - 1;
-    }
-
-    bool solve() {
-
-        if ( unsat ) {
-            return false;
-        }
-
-        // first UP
-        if ( !unit_propagation() ) { return false; }
-
-        while ( var_t var = asgn.get_unassigned() ) {
-
-            decide(var, false);
-
-            while ( !unit_propagation() ) {
-                if ( decisions.empty() ) {
-                    return false;
-                }
-            
-                backtrack();
-            }
-        }
-
-        return true;
-    }
-
-    
+    /*
+     * solves the formula _form_, returning true if it is SAT
+     */
+    bool solve();
 };
