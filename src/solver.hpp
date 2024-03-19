@@ -27,7 +27,7 @@ struct solver {
     std::vector< int > decisions; // indices into trail
     std::vector< int > reasons; // indices into form, -1 if dec
 
-    std::map< lit_t, std::vector< int > > occurs;
+    std::map< int, std::vector< int > > occurs;
 
     solver(formula _form) : form(std::move(_form)), asgn(form.var_count) {
         initialize_structures();
@@ -47,7 +47,7 @@ struct solver {
                 return;
             }
 
-            assign( std::abs( l1 ), l1 > 0);
+            assign( l1.var(), l1.pol() );
         } else {
             // init occurs vecs
             occurs[l1].push_back( clref );
@@ -129,7 +129,7 @@ struct solver {
 
                 if ( status == clause::UNIT ) {
                     lit_t l = c.watched_lits().second; 
-                    assign( std::abs(l), l > 0 );
+                    assign( l.var(), l.pol() );
                     reasons.push_back( i );
                 } 
                 // Conflict in UP -> some clause has -lit as the last literal
@@ -159,7 +159,7 @@ struct solver {
     // DPLL
     void backtrack() {
         for ( std::size_t i = decisions.back() + 1; i < trail.size(); ++i ) {
-            asgn.unassign( std::abs( trail[i] ) );
+            asgn.unassign( trail[i].var() );
         }
 
         // decisions.back() contains idx to trail of last decision
@@ -168,8 +168,8 @@ struct solver {
         decisions.pop_back();
 
         // set literal to negation, fix assignment
-        trail.back() *= -1;
-        var_t var = std::abs(trail.back());
+        trail.back().flip();
+        var_t var = trail.back().var();
         asgn[var] = 1 - *asgn[var];
 
         // set head of propagation queue to last

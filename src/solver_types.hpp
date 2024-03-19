@@ -10,8 +10,38 @@
 #include <iterator>
 
 using var_t = int;
-using lit_t = int;
 using lbool = std::optional< bool >;
+
+struct lit_t {
+    int lit;
+
+    lit_t() = default;
+
+    lit_t(auto&& l) {
+        lit = l;
+    }
+
+    operator int() {
+        return lit;
+    }
+
+    auto& operator=(auto l) {
+        lit = l;
+        return *this;
+    }
+
+    int var() const {
+        return std::abs( lit );
+    }
+
+    bool pol() const {
+        return lit > 0;
+    }
+
+    void flip() {
+        lit *= -1;
+    }
+};
 
 struct assignment {
     std::size_t vars_count;
@@ -59,7 +89,7 @@ struct assignment {
 
     // void increase_priority(const std::vector< lit_t >& cl) {
     //     for ( lit_t lit : cl ) {
-    //         var_t var = std::abs(lit);
+    //         var_t var = lit.var();
 
     //     }
     // }
@@ -77,7 +107,7 @@ struct assignment {
     }
 
     bool lit_unassigned( lit_t lit ) const {
-        return var_unassigned( std::abs( lit ) );
+        return var_unassigned( lit.var() );
     }
 
     // input condition: only called on literals that are assigned
@@ -88,7 +118,7 @@ struct assignment {
 
         // ( lit > 0 ) true iff positive literal
         // asgn[ ... ] true iff variable is assigned true
-        return asgn[std::abs( lit )] == ( lit > 0 );
+        return asgn[ lit.var() ] == lit.pol();
     }
 
 };
@@ -154,7 +184,7 @@ struct clause {
      *          satisfied under asgn
      **/
      
-    clause_status resolve_watched(int clause_index, lit_t lit, assignment& asgn, std::map< lit_t, std::vector< int > >& occurs) {
+    clause_status resolve_watched(int clause_index, lit_t lit, assignment& asgn, std::map< int, std::vector< int > >& occurs) {
 
         auto [l1, l2] = watched_lits();
         auto& [w1, w2] = watched;
