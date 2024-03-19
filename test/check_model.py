@@ -57,11 +57,11 @@ def verify_model( filename, model_file ):
             sat = sat or ( neg and val == '0' ) or ( not neg and val == '1' )
 
         print(clause, sat)
-        print(model)
         if not sat:
             return False
+    return True
 
 
-print(verify_model("all_satisfiable/uf20-01.cnf", "model_file.txt"))
+print(verify_model("all_satisfiable/uf20-0478.cnf", "model_file.txt"))
 
 

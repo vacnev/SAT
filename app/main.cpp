@@ -12,7 +12,7 @@ int main(){
     std::string res = s.solve() ? "SAT" : "UNSAT";
     std::cout << res << "\n";
 
-    formula f2 = parse_dimacs("../test/all_satisfiable/uf20-01.cnf");
+    formula f2 = parse_dimacs("../test/all_satisfiable/uf20-0478.cnf");
     solver s2( std::move( f2 ) );
 
     std::string res2 = s2.solve() ? "SAT" : "UNSAT";

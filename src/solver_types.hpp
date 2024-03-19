@@ -190,9 +190,6 @@ struct clause {
         occurs[ data[w1] ].push_back( clause_index );
 
         std::cout << std::endl << std::endl;
-        for ( auto x : occurs[15] ) {
-            std::cout << x << " ";
-        }
 
 
         std::cout << "dnf" << std::endl;

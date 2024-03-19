@@ -109,8 +109,10 @@ struct solver {
             occurs[-lit] = {};
 
 
+            int curr_entry = 0;
 
             for ( int i : clause_indices ) {
+                curr_entry++;
                 clause& c = form[i];
                 clause::clause_status status = c.resolve_watched(i, -lit, asgn, occurs);
 
@@ -127,7 +129,7 @@ struct solver {
                     std::cout << "KONFLIKKT" << std::endl;
 
                     // return clause indices that would be dropped
-                    for ( int j = i+1; j < clause_indices.size(); j++ )
+                    for ( int j = curr_entry; j < clause_indices.size(); j++ )
                         occurs[-lit].push_back( clause_indices[j] );
 
                     return false; // UNSAT
