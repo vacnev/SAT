@@ -2,6 +2,10 @@
 
 #include "solver_types.hpp"
 
+/* mozne optim 
+ * - wrapper na trail - drzel by current size, nebyl by potreba resize v backtrack 
+ */
+
 struct solver {
 
     formula form;
@@ -12,7 +16,7 @@ struct solver {
      * used when adding clauses in the beginning
      */
 
-    bool unsat_constr;
+    bool unsat = false;
     
     // index into trail, head of queue to propagate
     std::size_t index;
@@ -35,21 +39,19 @@ struct solver {
     void initialize_clause( const clause& cl, int clref ) {
         auto [l1, l2] = cl.watched_lits();
 
-        // init occurs vecs
-        occurs[l1].push_back( clref );
-        occurs[l2].push_back( clref );
-
         // unit clause, setup trail for first UP
-        /* TODO: enqueue literals for first UP here, maybe even do the
-         * assignment?
         if ( cl.status == clause::UNIT ) {
-            trail.push_back( l1 );
-        }
+            if ( !asgn.lit_unassigned(l1) && !asgn.satisfies_literal(l1) ) {
+                unsat = true;
+                return;
+            }
 
-        else {
+            assign( std::abs( l1 ), l1 > 0);
+        } else {
+            // init occurs vecs
+            occurs[l1].push_back( clref );
             occurs[l2].push_back( clref );
         }
-        */
 
     }
     
@@ -57,6 +59,10 @@ struct solver {
     void initialize_structures() {
         for ( std::size_t i = 0; i < form.clause_count; i++ ){
             initialize_clause( form[i], i );
+
+            if ( unsat ) {
+                return;
+            }
         }
 
         index = 0;
@@ -99,17 +105,11 @@ struct solver {
 
             lit_t lit = trail[index++];
 
-            auto clause_indices = occurs.extract(-lit).mapped();
+            auto& clause_indices = occurs[-lit];
+            auto og_size = clause_indices.size();
 
-
-            // TODO: unlinking occurs[-lit] causes issues for some reason
-            // adding this ad hoc solution for now 
-            occurs[-lit] = {};
-
-            int curr_entry = 0;
-
-            for ( int i : clause_indices ) {
-                curr_entry++;
+            for ( int curr_entry = 0; curr_entry < og_size; ++curr_entry ) {
+                int i = clause_indices[curr_entry];
                 clause& c = form[i];
                 clause::clause_status status = c.resolve_watched(i, -lit, asgn, occurs);
 
@@ -123,12 +123,13 @@ struct solver {
                     std::cout << "KONFLIKKT" << std::endl;
 
                     // return clause indices that would be dropped
-                    for ( int j = curr_entry; j < clause_indices.size(); j++ )
-                        occurs[-lit].push_back( clause_indices[j] );
+                    clause_indices.erase(clause_indices.begin(), std::next(clause_indices.begin(), curr_entry + 1));
 
                     return false; // UNSAT
                 }
             }
+
+            clause_indices.erase(clause_indices.begin(), std::next(clause_indices.begin(), og_size));
         }
 
         return true;
@@ -164,25 +165,22 @@ struct solver {
 
     bool solve() {
 
-        // first UP
-        if ( !unit_propagation() ) { return false; } 
+        if ( unsat ) {
+            return false;
+        }
 
-        bool backtracked = false;
+        // first UP
+        if ( !unit_propagation() ) { return false; }
 
         while ( var_t var = asgn.get_unassigned() ) {
 
-            if ( !backtracked )
-                decide(var, false);
+            decide(var, false);
 
-            backtracked = false;
-
-            if ( !unit_propagation() ) {
+            while ( !unit_propagation() ) {
                 if ( decisions.empty() ) {
                     return false;
                 }
-
             
-                backtracked = true;
                 backtrack();
             }
         }

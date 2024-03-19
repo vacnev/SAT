@@ -7,6 +7,7 @@
 #include <utility>
 #include <queue>
 #include <algorithm>
+#include <iterator>
 
 using var_t = int;
 using lit_t = int;
