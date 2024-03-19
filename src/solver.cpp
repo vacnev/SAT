@@ -19,7 +19,6 @@ void solver::initialize_clause( const clause& cl, int clref ) {
 
 }
 
-// init occurs
 void solver::initialize_structures() {
     for ( std::size_t i = 0; i < form.clause_count; i++ ){
         initialize_clause( form[i], i );
@@ -59,24 +58,18 @@ void solver::output_model( const std::string &filename ) {
 }
 
 
-// assigns + sets starting idx of new decision level
 void solver::decide( var_t x, bool v ) {
     assign(x, v);
     decisions.push_back(trail.size() - 1);
     reasons.push_back(-1);
 }
 
-// sets x to value, adds the literal to trail
 void solver::assign( var_t x, bool v ) {
     asgn[x] = v;
     lit_t l = ( v ) ? x : -x;
     trail.push_back(l);
 }
 
-/* unit propagates the literals enqueued in trail
- * until index == trail.size() i.e. all literals 
- * have been propagated
- */
 bool solver::unit_propagation() {
 
     while ( index < trail.size() ) {
@@ -120,7 +113,6 @@ void solver::add_learnt_clause(clause c) {
     form.add_learnt_clause(std::move(c));
 }
 
-// DPLL
 void solver::backtrack() {
     for ( std::size_t i = decisions.back() + 1; i < trail.size(); ++i ) {
         asgn.unassign( trail[i].var() );

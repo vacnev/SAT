@@ -63,6 +63,8 @@ struct solver {
     /**
      * INIT FUNCTIONS
      */
+
+    // initialize _occurs_, check empty / unit clauses before solve()
     void initialize_clause( const clause& cl, int clref );
     void initialize_structures();
 
