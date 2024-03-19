@@ -8,6 +8,7 @@
 #include <queue>
 #include <algorithm>
 #include <iterator>
+#include <concepts>
 
 using var_t = int;
 using lbool = std::optional< bool >;
@@ -17,7 +18,7 @@ struct lit_t {
 
     lit_t() = default;
 
-    lit_t(auto&& l) {
+    lit_t(std::convertible_to< int > auto&& l) {
         lit = l;
     }
 
@@ -25,7 +26,7 @@ struct lit_t {
         return lit;
     }
 
-    auto& operator=(auto l) {
+    auto& operator=(std::convertible_to< int > auto l) {
         lit = l;
         return *this;
     }
