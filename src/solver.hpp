@@ -1,6 +1,7 @@
 #pragma once
 
 #include "solver_types.hpp"
+#include <fstream>
 
 /* mozne optim 
  * - wrapper na trail - drzel by current size, nebyl by potreba resize v backtrack 
@@ -69,6 +70,31 @@ struct solver {
     }
 
 
+    std::vector< bool > get_model() {
+        std::vector< bool > res( asgn.vars_count );
+
+        for ( int var = 1; var <= asgn.vars_count; ++var ) {
+            res[var-1] = asgn.satisfies_literal( var );
+        }
+        return res;
+    }
+
+    std::string get_model_string() {
+        auto model = get_model();
+        std::string model_str;
+        for ( int i = 1; i <= model.size(); ++i ){
+            model_str += std::to_string( i )+ " : " + std::to_string( model[i-1] ) + "\n";
+        }
+        return model_str;        
+    }
+
+    void output_model( const std::string &filename ) {
+        std::string str = get_model_string();
+        std::ofstream out( filename, std::ios::out );
+        out << str;
+    }
+
+
     // assigns + sets starting idx of new decision level
     void decide( var_t x, bool v ) {
         assign(x, v);
@@ -89,18 +115,6 @@ struct solver {
      */
     bool unit_propagation() {
 
-        std::cout << "UNIT PROP: \n";
-        for ( auto x : trail ) {
-            std::cout << x << ", ";
-        }
-
-        std::cout << std::endl;
-        for ( auto x : decisions ) {
-            std::cout << x << ", ";
-        }
-
-        std::cout << std::endl << std::endl;
-
         while ( index < trail.size() ) {
 
             lit_t lit = trail[index++];
@@ -120,7 +134,6 @@ struct solver {
                 } 
                 // Conflict in UP -> some clause has -lit as the last literal
                 else if ( status == clause::CONFLICT ) {
-                    std::cout << "KONFLIKKT" << std::endl;
 
                     // return clause indices that would be dropped
                     clause_indices.erase(clause_indices.begin(), std::next(clause_indices.begin(), curr_entry + 1));
@@ -183,11 +196,6 @@ struct solver {
             
                 backtrack();
             }
-        }
-
-        std::cout << "Model:\n";
-        for ( std::size_t i = 1; i < asgn.asgn.size(); i++ ) {
-            std::cout << i << " : " << asgn.asgn[i].value() << "\n";
         }
 
         return true;

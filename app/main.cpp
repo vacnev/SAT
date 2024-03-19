@@ -3,20 +3,24 @@
 #include "solver.hpp"
 #include "parser.hpp"
 
-int main(){
-    std::cout << "Hello world!\n";
+int main( int argc, char *argv[] ){
 
-    formula f = parse_dimacs("../test/ezpz.cnf");
-    solver s( std::move( f ) );
+    if ( argc == 1 ) {
+        std::cout << "UNKNOWN\n";
+        return 0;
+    }
 
-    std::string res = s.solve() ? "SAT" : "UNSAT";
-    std::cout << res << "\n";
+    std::string res;
+    std::string model_output = "../test/model_file";
 
-    formula f2 = parse_dimacs("../test/all_satisfiable/uf20-0478.cnf");
-    solver s2( std::move( f2 ) );
+    for ( int i = 1; i < argc; ++i ) {
+        formula f = parse_dimacs( argv[i] );
+        solver s = solver( std::move( f ) );
+        res = s.solve() ? "SAT" : "UNSAT";
+        std::cout << res << "\n";
 
-    std::string res2 = s2.solve() ? "SAT" : "UNSAT";
-    std::cout << res2 << "\n";
+        s.output_model( model_output + "_" + argv[i] );
+    }
 
     return 0;
 }
