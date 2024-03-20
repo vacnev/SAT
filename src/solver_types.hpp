@@ -1,14 +1,15 @@
 #pragma once
 
+#include <algorithm>
+#include <concepts>
 #include <iostream>
-#include <vector>
+#include <iterator>
 #include <map>
 #include <optional>
-#include <utility>
 #include <queue>
-#include <algorithm>
-#include <iterator>
-#include <concepts>
+#include <vector>
+#include <unordered_map>
+#include <utility>
 
 using var_t = int;
 using lbool = std::optional< bool >;
@@ -185,7 +186,7 @@ struct clause {
      *          satisfied under asgn
      **/
      
-    clause_status resolve_watched(int clause_index, lit_t lit, assignment& asgn, std::map< int, std::vector< int > >& occurs) {
+    clause_status resolve_watched(int clause_index, lit_t lit, assignment& asgn, std::unordered_map< int, std::vector< int > >& occurs) {
 
         auto [l1, l2] = watched_lits();
         auto& [w1, w2] = watched;
@@ -193,6 +194,12 @@ struct clause {
         if (lit != l1) {
             using std::swap;
             swap( w1, w2 );
+        }
+
+        // try to avoid moving watch
+        if ( asgn.satisfies_literal( l2 ) ) {
+            occurs[ data[w1] ].push_back( clause_index  );
+            return SATISFIED;
         }
 
         // find unassigned literal

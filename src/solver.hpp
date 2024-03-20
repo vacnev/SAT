@@ -47,7 +47,7 @@ struct solver {
      * tracks watched literals accros clauses, maps literals -> indices of
      * clauses in which they are currently watched
      */
-    std::map< int, std::vector< int > > occurs;
+    std::unordered_map< int, std::vector< int > > occurs;
 
 
 
