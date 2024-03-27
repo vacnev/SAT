@@ -11,7 +11,7 @@
 
 To run the solver on a dimacs file, run:
 
-	$ fousaty [path-to-dimacs]
+	$ ./fousaty [path-to-dimacs]
 
 # Team:
 - Václav Nevyhoštěný, učo: 514059
