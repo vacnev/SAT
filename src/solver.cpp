@@ -31,7 +31,6 @@ void solver::initialize_structures() {
     index = 0;
 }
 
-
 std::vector< bool > solver::get_model() {
     std::vector< bool > res( asgn.vars_count );
 

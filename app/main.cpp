@@ -16,7 +16,7 @@ int main( int argc, char *argv[] ){
     for ( int i = 1; i < argc; ++i ) {
         formula f = parse_dimacs( argv[i] );
         solver s = solver( std::move( f ) );
-        res = s.solve() ? "SAT" : "UNSAT";
+        res = s.solve() ? "s SATISFIABLE" : "s UNSATISFIABLE";
         std::cout << res << "\n";
 
         s.output_model( model_output );
