@@ -131,6 +131,10 @@ void solver::backtrack() {
     index = trail.size() - 1;
 }
 
+std::pair< clause, int > solver::analyze_conflict() {
+    
+}
+
 bool solver::solve() {
 
     if ( unsat ) {

@@ -3,10 +3,6 @@
 #include "solver_types.hpp"
 #include <fstream>
 
-/* mozne optim 
- * - wrapper na trail - drzel by current size, nebyl by potreba resize v backtrack 
- */
-
 struct solver {
 
     // solved formula
@@ -101,6 +97,12 @@ struct solver {
      * as well as nullifying the resulting unit propagations,
      */
     void backtrack();
+
+    /**
+     * performs conflict analysis, returning a new learnt clause
+     * and backjump index
+     */
+    std::pair< clause, int > analyze_conflict();
 
     /*
      * solves the formula _form_, returning true if it is SAT
