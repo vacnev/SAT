@@ -45,7 +45,15 @@ struct solver {
      */
     std::unordered_map< int, std::vector< int > > occurs;
 
+    /**
+     * seen literals, used for resolution in CDCL
+    */
+    std::unordered_map< var_t, int > seen;
 
+    /**
+     * levels of variables, used for CDCL
+     */
+    std::unordered_map< var_t, int > levels;
 
     /**
      * CONSTRUCTORS
@@ -80,6 +88,11 @@ struct solver {
      * CORE
      */
 
+    /* current decision level */
+    int current_level() const {
+        return decisions.size();
+    }
+
     // assigns val v to variable x, adds new decision level to _decisions_
     void decide( var_t x, bool v );
 
@@ -103,6 +116,11 @@ struct solver {
      * and backjump index
      */
     std::pair< clause, int > analyze_conflict();
+
+    /**
+     * backjumps to the level of the last UIP
+    */
+    void backjump( int level, clause& learnt );
 
     /*
      * solves the formula _form_, returning true if it is SAT

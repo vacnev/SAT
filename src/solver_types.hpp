@@ -142,7 +142,11 @@ struct clause {
 
     std::vector< lit_t > data;
 
-    clause(std::vector< lit_t > _data) : learnt(false), data(std::move(_data)) {
+    clause(std::vector< lit_t > _data, bool _learnt = false) : learnt(_learnt), data(std::move(_data)) {
+        if ( learnt ) {
+            status = UNIT;
+            watched = { ( data.size() > 1 ), 0 };
+        }
         if ( data.empty() ) {
             status = CONFLICT;
             watched = { 0, 0 };
@@ -198,7 +202,7 @@ struct clause {
 
         // try to avoid moving watch
         if ( asgn.satisfies_literal( l2 ) ) {
-            occurs[ data[w1] ].push_back( clause_index  );
+            occurs[ data[w1] ].push_back( clause_index );
             return SATISFIED;
         }
 

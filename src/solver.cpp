@@ -59,6 +59,7 @@ void solver::output_model( const std::string &filename ) {
 
 void solver::decide( var_t x, bool v ) {
     assign(x, v);
+    levels[x]++;
     decisions.push_back(trail.size() - 1);
     reasons.push_back(-1);
 }
@@ -67,6 +68,7 @@ void solver::assign( var_t x, bool v ) {
     asgn[x] = v;
     lit_t l = ( v ) ? x : -x;
     trail.push_back(l);
+    levels[x] = decisions.size();
 }
 
 bool solver::unit_propagation() {
@@ -131,8 +133,97 @@ void solver::backtrack() {
     index = trail.size() - 1;
 }
 
+void solver::backjump( int level, clause& learnt ) {
+    std::size_t i = decisions[level - 1] + 1;
+    for ( ; i < trail.size(); ++i ) {
+        asgn.unassign( trail[i].var() );
+    }
+
+    // adjust trail accordingly
+    decisions.resize( level - 1 );
+    trail.resize( decisions.back() + 1 );
+    auto [l1, l2] = learnt.watched_lits();
+    trail.push_back( l1 );
+
+    // set head of propagation queue to last
+    index = trail.size() - 1;
+}
+
 std::pair< clause, int > solver::analyze_conflict() {
+    std::vector< lit_t > learnt_clause{ 0 };
+    int index = trail.size();
+    lit_t uip = 0;
+    std::vector< int > reasons_learnt;
+
+    while ( --index > decisions.back() ) {
+        clause& confl = form[reasons[index]];
+        auto [l1, l2] = confl.watched_lits();
+
+        for ( lit_t l : confl.data ) {
+
+            if ( l != l2 && levels[l.var()] > 0 ) {
+                seen[l.var()] = 1;
+
+                if ( levels[l.var()] < current_level() ) {
+                    learnt_clause.push_back( l );
+                    reasons_learnt.push_back( reasons[index] );
+                }
+            }
+        }
+
+        // find next clause to resolve with
+        while ( !seen[trail[index].var()] ) { index--; };
+        uip = trail[index];
+        seen[uip.var()] = 0;
+    }
+
+    learnt_clause.push_back( -uip );
+    std::swap(learnt_clause[1], learnt_clause.back());
+    auto to_clear = learnt_clause;
+
+    // simplify learnt clause
+    int i, j;
+    for ( i = j = 1; i < learnt_clause.size(); ++i) {
+        if ( reasons_learnt[i] == -1) {
+            learnt_clause[j++] = learnt_clause[i];
+        } else {
+            clause& confl = form[reasons_learnt[i]];
+            auto [l1, l2] = confl.watched_lits();
+
+            for ( lit_t l : confl.data ) {
+                if ( l != l2 && levels[l.var()] > 0 && !seen[l.var()] ) {
+                    learnt_clause[j++] = learnt_clause[i];
+                    break;
+                }
+            }
+        }
+    }
+
+    learnt_clause.resize(j + 1);
+    learnt_clause.shrink_to_fit();
+
+    // find backjump level
+    int backjump_level = 1;
+    if ( learnt_clause.size() > 1 ) {
+        int max_i = 1;
+        for ( i = 2; i < learnt_clause.size(); ++i ) {
+            if ( levels[learnt_clause[i].var()] > levels[learnt_clause[max_i].var()] ) {
+                max_i = i;
+            }
+        }
+
+        std::swap(learnt_clause[1], learnt_clause[max_i]);
+        backjump_level = levels[learnt_clause[1].var()];
+    }
+
+    clause learnt( std::move(learnt_clause), true );
     
+    // clear seen
+    for ( lit_t l : to_clear ) {
+        seen[l.var()] = 0;
+    }
+
+    return { learnt, backjump_level };
 }
 
 bool solver::solve() {
@@ -153,7 +244,13 @@ bool solver::solve() {
                 return false;
             }
         
-            backtrack();
+            auto [learnt, level] = analyze_conflict();
+            if ( level == 0 ) {
+                return false;
+            }
+
+            backjump(level, learnt);
+            add_learnt_clause(std::move(learnt));
         }
     }
 
