@@ -17,7 +17,7 @@ using lbool = std::optional< bool >;
 struct lit_t {
     int lit;
 
-    lit_t() = default;
+    lit_t() : lit(0) { std::cout << "WARNING: default lit constr called\n"; };
 
     lit_t(std::convertible_to< int > auto&& l) {
         lit = l;
@@ -27,7 +27,7 @@ struct lit_t {
         return lit;
     }
 
-    auto& operator=(std::convertible_to< int > auto l) {
+    auto& operator=(std::convertible_to< int > auto&& l) {
         lit = l;
         return *this;
     }
@@ -278,5 +278,9 @@ struct formula {
 
     void add_learnt_clause(clause c) {
         learnt.push_back(std::move(c));
+    }
+
+    auto size() const {
+        return base.size() + learnt.size();
     }
 };

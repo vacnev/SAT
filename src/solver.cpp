@@ -5,12 +5,13 @@ void solver::initialize_clause( const clause& cl, int clref ) {
 
     // unit clause, setup trail for first UP
     if ( cl.status == clause::UNIT ) {
-        if ( !asgn.lit_unassigned(l1) && !asgn.satisfies_literal(l1) ) {
+        if ( !asgn.lit_unassigned(l2) && !asgn.satisfies_literal(l2) ) {
             unsat = true;
             return;
         }
 
-        assign( l1.var(), l1.pol() );
+        assign( l2.var(), l2.pol() );
+        reasons.push_back( clref );
     } else {
         // init occurs vecs
         occurs[l1].push_back( clref );
@@ -122,6 +123,7 @@ void solver::backtrack() {
     // decisions.back() contains idx to trail of last decision
     // adjust trail accordingly
     trail.resize( decisions.back() + 1 );
+    reasons.resize( decisions.back() + 1 );
     decisions.pop_back();
 
     // set literal to negation, fix assignment
@@ -134,16 +136,16 @@ void solver::backtrack() {
 }
 
 void solver::backjump( int level, clause& learnt ) {
-    std::size_t i = decisions[level - 1] + 1;
-    for ( ; i < trail.size(); ++i ) {
+    std::size_t j = decisions[level - 1];
+    for ( auto i = j ; i < trail.size(); ++i ) {
         asgn.unassign( trail[i].var() );
     }
 
     // adjust trail accordingly
     decisions.resize( level - 1 );
-    trail.resize( decisions.back() + 1 );
-    auto [l1, l2] = learnt.watched_lits();
-    trail.push_back( l1 );
+    trail.resize( j );
+    reasons.resize( j );
+    initialize_clause( learnt, form.size() );
 
     // set head of propagation queue to last
     index = trail.size() - 1;
@@ -161,7 +163,7 @@ std::pair< clause, int > solver::analyze_conflict() {
 
         for ( lit_t l : confl.data ) {
 
-            if ( l != l2 && levels[l.var()] > 0 ) {
+            if ( l != l2 && levels[l.var()] > 0 && !seen[l.var()] ) {
                 seen[l.var()] = 1;
 
                 if ( levels[l.var()] < current_level() ) {
@@ -177,17 +179,16 @@ std::pair< clause, int > solver::analyze_conflict() {
         seen[uip.var()] = 0;
     }
 
-    learnt_clause.push_back( -uip );
-    std::swap(learnt_clause[1], learnt_clause.back());
+    learnt_clause[0] = -uip;
     auto to_clear = learnt_clause;
 
     // simplify learnt clause
     int i, j;
     for ( i = j = 1; i < learnt_clause.size(); ++i) {
-        if ( reasons_learnt[i] == -1) {
+        if ( reasons_learnt[i - 1] == -1) {
             learnt_clause[j++] = learnt_clause[i];
         } else {
-            clause& confl = form[reasons_learnt[i]];
+            clause& confl = form[reasons_learnt[i - 1]];
             auto [l1, l2] = confl.watched_lits();
 
             for ( lit_t l : confl.data ) {
@@ -199,7 +200,7 @@ std::pair< clause, int > solver::analyze_conflict() {
         }
     }
 
-    learnt_clause.resize(j + 1);
+    learnt_clause.resize(j);
     learnt_clause.shrink_to_fit();
 
     // find backjump level
