@@ -1,9 +1,10 @@
-#pragma once
-
 #include "solver_types.hpp"
+#include "logger.hpp"
 #include <fstream>
 
 struct solver {
+
+    logger log;
 
     // solved formula
     formula form;
@@ -12,6 +13,9 @@ struct solver {
      * SOLVER STATE
      */
     assignment asgn;
+
+    // index to confl clause
+    int confl_clause;
 
     /**
      * signals that solver is in an unsatisfiable state before the first unit
@@ -81,6 +85,9 @@ struct solver {
     std::vector< bool > get_model();
     std::string get_model_string();
     void output_model( const std::string &filename );
+
+    void log_solver_state( const std::string &title );
+    void log_clause( const clause &c, const std::string &title );
 
 
 

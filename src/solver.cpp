@@ -57,6 +57,64 @@ void solver::output_model( const std::string &filename ) {
     out << str;
 }
 
+void solver::log_clause( const clause& c, const std::string &title ) {
+    if ( !log.enabled() ) return;
+    
+    log.log() << "   " << title << " clause - {";
+    for ( lit_t x : c.data ) {
+        log.log() << x << ", "; 
+    }
+
+    log.log() << "}";
+    auto x = c.watched_lits();
+    log.log() << "Watches - " << x.first << ", " << x.second << "\n";
+
+}
+
+void solver::log_solver_state( const std::string &title ) {
+    if ( !log.enabled() ) return;
+
+
+    /*
+     * bad idea
+    for ( int i = 0; i < form.clause_count; i++ ) {
+        log_clause( form[i] , "Clause " + std::to_string(i) );
+    }
+    */
+
+    log.log() << title << "\n";
+    log.log() << "index: " << index << "\n";
+    log.log() << "TRAIL:\n";
+    log.log() << "[ ";
+    for ( auto x : trail ) { log.log() << x << ", ";}
+    log.log() << " ]\n\n";
+
+    log.log() << "ASGN:\n";
+    log.log() << "[ ";
+    for ( int i = 1; i < asgn.asgn.size(); i++ ) { 
+        if ( asgn.var_unassigned( i ) ) { log.log() << " none ; "; }
+        else { log.log() << asgn.satisfies_literal( i ) << " ; "; }
+    }
+    log.log() << " ]\n\n";
+
+    log.log() << "DECISIONS:\n";
+    log.log() << "[ ";
+    for ( auto x : decisions ) { log.log() << x << ", "; }
+    log.log() << " ]\n\n";
+
+    log.log() << "LEVELS:\n";
+    log.log() << "[ ";
+    for ( auto &[k, v] : levels ) { log.log() << k << " - " << v << "; "; }
+    log.log() << " ]\n\n";
+
+    log.log() << "REASONS:\n";
+    log.log() << "[ ";
+    for ( auto x : reasons ) { log.log() << x << ", "; }
+    log.log() << " ]\n\n";
+
+    log.log() << "------------------------------------" << std::endl;
+}
+
 
 void solver::decide( var_t x, bool v ) {
     assign(x, v);
