@@ -1,4 +1,5 @@
 #include "solver.hpp"
+#include <cassert>
 
 void solver::initialize_clause( const clause& cl, int clref ) {
     auto [l1, l2] = cl.watched_lits();
@@ -112,6 +113,13 @@ void solver::log_solver_state( const std::string &title ) {
     for ( auto x : reasons ) { log.log() << x << ", "; }
     log.log() << " ]\n\n";
 
+    log.log() << "REASON CLAUSES:\n";
+    for ( auto x : reasons ) { 
+        if ( x != -1 ) {
+            log_clause(form[x], "Reason - " + std::to_string(x));
+        }
+    }
+
     log.log() << "------------------------------------" << std::endl;
 }
 
@@ -154,6 +162,9 @@ bool solver::unit_propagation() {
 
                 // return clause indices that would be dropped
                 clause_indices.erase(clause_indices.begin(), std::next(clause_indices.begin(), curr_entry + 1));
+
+                // save index of conflict clause
+                conflict_idx = i;
 
                 return false; // UNSAT
             }
@@ -209,38 +220,65 @@ void solver::backjump( int level, clause& learnt ) {
     index = trail.size() - 1;
 }
 
-std::pair< clause, int > solver::analyze_conflict() {
+std::pair< clause, int > solver::analyze_conflict( clause confl ) {
+
     std::vector< lit_t > learnt_clause{ 0 };
-    int index = trail.size();
+    int index = trail.size() - 1;
     lit_t uip = 0;
     std::vector< int > reasons_learnt;
 
-    while ( --index > decisions.back() ) {
-        clause& confl = form[reasons[index]];
+    log_solver_state("conflict analysis");
+    log_clause( confl, "conflict clause" );
+    log.log() << std::endl;
+
+    int lits_remaining = 0;
+    bool finished = false;
+
+    do {
+
+        log.log() << "Index: " << index << "\n";
+        log_clause( confl, "currently resolved clause" );
+        log.log() << std::endl;
         auto [l1, l2] = confl.watched_lits();
 
         for ( lit_t l : confl.data ) {
 
-            if ( l != l2 && levels[l.var()] > 0 && !seen[l.var()] ) {
+            if ( ( uip == 0 || l != l2 ) && levels[l.var()] > 0 && !seen[l.var()] ) {
                 seen[l.var()] = 1;
 
                 if ( levels[l.var()] < current_level() ) {
                     learnt_clause.push_back( l );
                     reasons_learnt.push_back( reasons[index] );
                 }
+                else {
+                    lits_remaining++;
+                }
             }
         }
 
+        log_clause( clause( learnt_clause ), "ahoj" );
+
         // find next clause to resolve with
         while ( !seen[trail[index].var()] ) { index--; };
+        log.log() << "index:" << index << std::endl;
+        log.log() << "lits:" << lits_remaining << std::endl;
+
+        // last step - this will be equal to -1
+        if ( reasons[index] != -1)
+            confl = form[reasons[index]];
+
         uip = trail[index];
         seen[uip.var()] = 0;
-    }
+        lits_remaining--;
+
+    } while (lits_remaining > 0);
 
     learnt_clause[0] = -uip;
+    log_clause(learnt_clause, "learnt_clause");
     auto to_clear = learnt_clause;
 
     // simplify learnt clause
+    /*
     int i, j;
     for ( i = j = 1; i < learnt_clause.size(); ++i) {
         if ( reasons_learnt[i - 1] == -1) {
@@ -260,12 +298,13 @@ std::pair< clause, int > solver::analyze_conflict() {
 
     learnt_clause.resize(j);
     learnt_clause.shrink_to_fit();
+    */
 
     // find backjump level
     int backjump_level = 1;
     if ( learnt_clause.size() > 1 ) {
         int max_i = 1;
-        for ( i = 2; i < learnt_clause.size(); ++i ) {
+        for ( int i = 2; i < learnt_clause.size(); ++i ) {
             if ( levels[learnt_clause[i].var()] > levels[learnt_clause[max_i].var()] ) {
                 max_i = i;
             }
@@ -287,6 +326,8 @@ std::pair< clause, int > solver::analyze_conflict() {
 
 bool solver::solve() {
 
+    log.set_log_level( log_level::TRACE );
+
     if ( unsat ) {
         return false;
     }
@@ -303,7 +344,8 @@ bool solver::solve() {
                 return false;
             }
         
-            auto [learnt, level] = analyze_conflict();
+            assert( conflict_idx != -1 );
+            auto [learnt, level] = analyze_conflict( form[conflict_idx] );
             if ( level == 0 ) {
                 return false;
             }
@@ -314,5 +356,4 @@ bool solver::solve() {
     }
 
     return true;
-}
-
+};
