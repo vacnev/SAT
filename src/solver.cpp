@@ -13,11 +13,11 @@ void solver::initialize_clause( const clause& cl, int clref ) {
 
         assign( l2.var(), l2.pol() );
         reasons.push_back( clref );
-    } else {
-        // init occurs vecs
-        occurs[l1].push_back( clref );
-        occurs[l2].push_back( clref );
     }
+
+    // init occurs vecs
+    occurs[l1].push_back( clref );
+    occurs[l2].push_back( clref );
 
 }
 
@@ -113,12 +113,12 @@ void solver::log_solver_state( const std::string &title ) {
     for ( auto x : reasons ) { log.log() << x << ", "; }
     log.log() << " ]\n\n";
 
-    log.log() << "REASON CLAUSES:\n";
-    for ( auto x : reasons ) { 
-        if ( x != -1 ) {
-            log_clause(form[x], "Reason - " + std::to_string(x));
-        }
-    }
+    // log.log() << "OCCURS:\n";
+    // for ( auto &[k, v] : occurs ) {
+    //     log.log() << k << " - [ ";
+    //     for ( auto x : v ) { log_clause(form[x], "Occurs" + std::to_string(k)); }
+    //     log.log() << " ]\n";
+    // }
 
     log.log() << "------------------------------------" << std::endl;
 }
@@ -147,15 +147,27 @@ bool solver::unit_propagation() {
         auto& clause_indices = occurs[-lit];
         auto og_size = clause_indices.size();
 
+        log.log() << "UP LIT: " << lit << '\n';
+
         for ( int curr_entry = 0; curr_entry < og_size; ++curr_entry ) {
             int i = clause_indices[curr_entry];
             clause& c = form[i];
+
+            log_clause(c, "UP CLAUSE ");
+
             clause::clause_status status = c.resolve_watched(i, -lit, asgn, occurs);
+
+            
 
             if ( status == clause::UNIT ) {
                 lit_t l = c.watched_lits().second; 
                 assign( l.var(), l.pol() );
                 reasons.push_back( i );
+
+                log.log() << "resovled lit: " << lit.var() << '\n';
+                log_clause(c, "UNIT PROPAGATION ");
+                log_solver_state("UNIT PROPAGATION ");
+                
             } 
             // Conflict in UP -> some clause has -lit as the last literal
             else if ( status == clause::CONFLICT ) {
@@ -276,21 +288,45 @@ void solver::backjump( int level, clause& learnt ) {
     index = ( trail.size() > 0 ) ? trail.size() - 1 : 0;
 }
 
-std::pair< clause, int > solver::analyze_conflict( clause confl ) {
+std::pair< clause, int > solver::analyze_conflict() {
 
     std::vector< lit_t > learnt_clause{ 0 };
-    int index = trail.size() - 1;
+    int ind = trail.size() - 1;
     lit_t uip = 0;
+    int lits_remaining = 0;
     std::vector< int > reasons_learnt;
+    clause& confl = form[confl_clause];
 
+<<<<<<< HEAD
     log_solver_state("conflict analysis");
     log_clause( confl, "conflict clause" );
     log.log() << std::endl;
 
     int lits_remaining = 0;
+=======
+    log.log() << "\n\n------------------------CONFLICT ANALYSIS----------------------------\n\n\n";
+>>>>>>> d8158f56f977e00d5e8adef1d5c19ff80cd0e91f
 
     do {
+        
+        
 
+        // std::cout << "lits_remaining begin " << lits_remaining << "\n ";
+
+        if ( lits_remaining > 0 ) {
+
+            if ( reasons[ind] == -1 ) {
+                log_solver_state("BAD ANALYZE CONFLICT " + std::to_string(lits_remaining));
+                log_clause(confl, "CONFLICT CLAUSE");
+                log.log() << "ind: " << ind << '\n';
+            }
+            // std::cout << "lits_remaining " << lits_remaining << " reasons " << reasons[ind] << "\n";
+            confl = form[reasons[ind]];
+        }
+
+        log_clause(confl, "CONFLICT CLAUSE");
+
+<<<<<<< HEAD
         log.log() << "Index: " << index << "\n";
         log_clause( confl, "currently resolved clause" );
         log.log() << std::endl;
@@ -298,13 +334,20 @@ std::pair< clause, int > solver::analyze_conflict( clause confl ) {
         for ( lit_t l : confl.data ) {
 
             if ( l != uip && levels[l.var()] > 0 && !seen[l.var()] ) {
+=======
+        auto [l1, l2] = confl.watched_lits();
+
+        for ( lit_t l : confl.data ) {
+
+            if ( (l != l2 || uip == 0) && levels[l.var()] > 0 && !seen[l.var()] ) {
+>>>>>>> d8158f56f977e00d5e8adef1d5c19ff80cd0e91f
                 seen[l.var()] = 1;
+                // std::cout << "seen " << l << "\n";
 
                 if ( levels[l.var()] < current_level() ) {
                     learnt_clause.push_back( l );
-                    reasons_learnt.push_back( reasons[index] );
-                }
-                else {
+                    reasons_learnt.push_back( reasons[ind] );
+                } else {
                     lits_remaining++;
                 }
             }
@@ -313,15 +356,8 @@ std::pair< clause, int > solver::analyze_conflict( clause confl ) {
         log_clause( clause( learnt_clause ), "ahoj" );
 
         // find next clause to resolve with
-        while ( !seen[trail[index].var()] ) { index--; };
-        log.log() << "index:" << index << std::endl;
-        log.log() << "lits:" << lits_remaining << std::endl;
-
-        // last step - this will be equal to -1
-        if ( reasons[index] != -1)
-            confl = form[reasons[index]];
-
-        uip = trail[index];
+        while ( !seen[trail[ind].var()] ) { ind--; };
+        uip = trail[ind];
         seen[uip.var()] = 0;
         lits_remaining--;
 
@@ -371,7 +407,16 @@ std::pair< clause, int > solver::analyze_conflict( clause confl ) {
         backjump_level = levels[learnt_clause[1].var()];
     }
 
+<<<<<<< HEAD
     log.log() << "backjump level is:" << backjump_level << "\n";
+=======
+    // log clause
+    log.log() << "\nLEARNT CLAUSE: ";
+    for ( lit_t l : learnt_clause ) {
+        log.log() << l << ", ";
+    }
+    log.log() << "\n";
+>>>>>>> d8158f56f977e00d5e8adef1d5c19ff80cd0e91f
 
     clause learnt( std::move(learnt_clause), true );
     
@@ -404,7 +449,7 @@ bool solver::solve() {
             }
         
             assert( conflict_idx != -1 );
-            auto [learnt, level] = analyze_conflict( form[conflict_idx] );
+            auto [learnt, level] = analyze_conflict();
             if ( level == 0 ) {
                 return false;
             }

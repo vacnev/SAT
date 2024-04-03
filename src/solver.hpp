@@ -126,7 +126,7 @@ struct solver {
      * performs conflict analysis, returning a new learnt clause
      * and backjump index
      */
-    std::pair< clause, int > analyze_conflict( clause confl );
+    std::pair< clause, int > analyze_conflict();
 
     /**
      * backjumps to the level of the last UIP

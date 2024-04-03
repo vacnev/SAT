@@ -217,7 +217,6 @@ struct clause {
             // sat lit => SATISFIED
             if ( asgn.lit_unassigned( l ) || asgn.satisfies_literal( l ) ) {
                 w1 = i;
-                auto [x, y] = watched_lits();
                 occurs[l].push_back( clause_index );
                 return UNDETERMINED;
             }
