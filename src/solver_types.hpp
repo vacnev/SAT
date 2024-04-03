@@ -147,7 +147,7 @@ struct clause {
             status = UNIT;
             watched = { ( data.size() > 1 ), 0 };
         }
-        if ( data.empty() ) {
+        else if ( data.empty() ) {
             status = CONFLICT;
             watched = { 0, 0 };
         }

@@ -217,13 +217,13 @@ void solver::backtrack() {
 }
 
 void solver::backjump( int level, clause& learnt ) {
-    std::size_t j = decisions[level - 1];
-    for ( auto i = j ; i < trail.size(); ++i ) {
+    int j = ( level > 0 ) ? decisions[level - 1] + 1 : decisions[0];
+    for ( int i = j ; i < trail.size(); ++i ) {
         asgn.unassign( trail[i].var() );
     }
 
     // adjust trail accordingly
-    decisions.resize( level - 1 );
+    decisions.resize( level );
     trail.resize( j );
     reasons.resize( j );
     initialize_clause( learnt, form.size() );
@@ -244,9 +244,6 @@ std::pair< clause, int > solver::analyze_conflict() {
     log.log() << "\n\n------------------------CONFLICT ANALYSIS----------------------------\n\n\n";
 
     do {
-        
-        
-
         // std::cout << "lits_remaining begin " << lits_remaining << "\n ";
 
         if ( lits_remaining > 0 ) {
@@ -255,6 +252,7 @@ std::pair< clause, int > solver::analyze_conflict() {
                 log_solver_state("BAD ANALYZE CONFLICT " + std::to_string(lits_remaining));
                 log_clause(confl, "CONFLICT CLAUSE");
                 log.log() << "ind: " << ind << '\n';
+                throw std::runtime_error("bad analyze conflict");
             }
             // std::cout << "lits_remaining " << lits_remaining << " reasons " << reasons[ind] << "\n";
             confl = form[reasons[ind]];
@@ -262,11 +260,9 @@ std::pair< clause, int > solver::analyze_conflict() {
 
         log_clause(confl, "CONFLICT CLAUSE");
 
-        auto [l1, l2] = confl.watched_lits();
-
         for ( lit_t l : confl.data ) {
 
-            if ( (l != l2 || uip == 0) && levels[l.var()] > 0 && !seen[l.var()] ) {
+            if ( l != uip && levels[l.var()] > 0 && !seen[l.var()] ) {
                 seen[l.var()] = 1;
                 // std::cout << "seen " << l << "\n";
 
@@ -317,7 +313,7 @@ std::pair< clause, int > solver::analyze_conflict() {
     */
 
     // find backjump level
-    int backjump_level = 1;
+    int backjump_level = -1;
     if ( learnt_clause.size() > 1 ) {
         int max_i = 1;
         for ( int i = 2; i < learnt_clause.size(); ++i ) {
@@ -344,7 +340,7 @@ std::pair< clause, int > solver::analyze_conflict() {
         seen[l.var()] = 0;
     }
 
-    return { learnt, backjump_level };
+    return { std::move( learnt ), backjump_level };
 }
 
 bool solver::solve() {
@@ -371,6 +367,8 @@ bool solver::solve() {
             auto [learnt, level] = analyze_conflict();
             if ( level == 0 ) {
                 return false;
+            } else if ( level == -1 ) {
+                level = 0;
             }
 
             backjump(level, learnt);
