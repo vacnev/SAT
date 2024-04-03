@@ -297,19 +297,13 @@ std::pair< clause, int > solver::analyze_conflict() {
     std::vector< int > reasons_learnt;
     clause& confl = form[confl_clause];
 
-<<<<<<< HEAD
     log_solver_state("conflict analysis");
     log_clause( confl, "conflict clause" );
     log.log() << std::endl;
 
-    int lits_remaining = 0;
-=======
     log.log() << "\n\n------------------------CONFLICT ANALYSIS----------------------------\n\n\n";
->>>>>>> d8158f56f977e00d5e8adef1d5c19ff80cd0e91f
 
     do {
-        
-        
 
         // std::cout << "lits_remaining begin " << lits_remaining << "\n ";
 
@@ -326,7 +320,6 @@ std::pair< clause, int > solver::analyze_conflict() {
 
         log_clause(confl, "CONFLICT CLAUSE");
 
-<<<<<<< HEAD
         log.log() << "Index: " << index << "\n";
         log_clause( confl, "currently resolved clause" );
         log.log() << std::endl;
@@ -334,13 +327,26 @@ std::pair< clause, int > solver::analyze_conflict() {
         for ( lit_t l : confl.data ) {
 
             if ( l != uip && levels[l.var()] > 0 && !seen[l.var()] ) {
-=======
+        // std::cout << "lits_remaining begin " << lits_remaining << "\n ";
+
+        if ( lits_remaining > 0 ) {
+
+            if ( reasons[ind] == -1 ) {
+                log_solver_state("BAD ANALYZE CONFLICT " + std::to_string(lits_remaining));
+                log_clause(confl, "CONFLICT CLAUSE");
+                log.log() << "ind: " << ind << '\n';
+            }
+            // std::cout << "lits_remaining " << lits_remaining << " reasons " << reasons[ind] << "\n";
+            confl = form[reasons[ind]];
+        }
+
+        log_clause(confl, "CONFLICT CLAUSE");
+
         auto [l1, l2] = confl.watched_lits();
 
         for ( lit_t l : confl.data ) {
 
             if ( (l != l2 || uip == 0) && levels[l.var()] > 0 && !seen[l.var()] ) {
->>>>>>> d8158f56f977e00d5e8adef1d5c19ff80cd0e91f
                 seen[l.var()] = 1;
                 // std::cout << "seen " << l << "\n";
 
@@ -407,17 +413,7 @@ std::pair< clause, int > solver::analyze_conflict() {
         backjump_level = levels[learnt_clause[1].var()];
     }
 
-<<<<<<< HEAD
     log.log() << "backjump level is:" << backjump_level << "\n";
-=======
-    // log clause
-    log.log() << "\nLEARNT CLAUSE: ";
-    for ( lit_t l : learnt_clause ) {
-        log.log() << l << ", ";
-    }
-    log.log() << "\n";
->>>>>>> d8158f56f977e00d5e8adef1d5c19ff80cd0e91f
-
     clause learnt( std::move(learnt_clause), true );
     
     // clear seen
