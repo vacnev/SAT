@@ -178,7 +178,6 @@ bool solver::unit_propagation() {
                 // save index of conflict clause
                 conflict_idx = i;
 
-                confl_clause = i;
                 return false; // UNSAT
             }
         }
@@ -233,30 +232,31 @@ void solver::backjump( int level, clause& learnt ) {
     index = trail.size() - 1;
 }
 
-std::pair< clause, int > solver::analyze_conflict( clause confl ) {
+std::pair< clause, int > solver::analyze_conflict() {
 
     std::vector< lit_t > learnt_clause{ 0 };
     int ind = trail.size() - 1;
     lit_t uip = 0;
-    int pathC = 0;
+    int lits_remaining = 0;
     std::vector< int > reasons_learnt;
     clause& confl = form[confl_clause];
-    log.set_log_level(log_level::TRACE);
+
     log.log() << "\n\n------------------------CONFLICT ANALYSIS----------------------------\n\n\n";
+
     do {
         
         
 
-        // std::cout << "pathC begin " << pathC << "\n ";
+        // std::cout << "lits_remaining begin " << lits_remaining << "\n ";
 
-        if ( pathC > 0 ) {
+        if ( lits_remaining > 0 ) {
 
             if ( reasons[ind] == -1 ) {
-                log_solver_state("BAD ANALYZE CONFLICT " + std::to_string(pathC));
+                log_solver_state("BAD ANALYZE CONFLICT " + std::to_string(lits_remaining));
                 log_clause(confl, "CONFLICT CLAUSE");
                 log.log() << "ind: " << ind << '\n';
             }
-            // std::cout << "pathC " << pathC << " reasons " << reasons[ind] << "\n";
+            // std::cout << "lits_remaining " << lits_remaining << " reasons " << reasons[ind] << "\n";
             confl = form[reasons[ind]];
         }
 
@@ -274,13 +274,6 @@ std::pair< clause, int > solver::analyze_conflict( clause confl ) {
                     learnt_clause.push_back( l );
                     reasons_learnt.push_back( reasons[ind] );
                 } else {
-                    ++pathC;
-                    // std::cout << "++pathC " << pathC << "\n";
-                }
-                else {
-                    lits_remaining++;
-                }
-                else {
                     lits_remaining++;
                 }
             }
@@ -310,14 +303,14 @@ std::pair< clause, int > solver::analyze_conflict( clause confl ) {
             clause& confl = form[reasons_learnt[i - 1]];
             auto [l1, l2] = confl.watched_lits();
 
-    //         for ( lit_t l : confl.data ) {
-    //             if ( l != l2 && levels[l.var()] > 0 && !seen[l.var()] ) {
-    //                 learnt_clause[j++] = learnt_clause[i];
-    //                 break;
-    //             }
-    //         }
-    //     }
-    // }
+            for ( lit_t l : confl.data ) {
+                if ( l != l2 && levels[l.var()] > 0 && !seen[l.var()] ) {
+                    learnt_clause[j++] = learnt_clause[i];
+                    break;
+                }
+            }
+        }
+    }
 
     learnt_clause.resize(j);
     learnt_clause.shrink_to_fit();
@@ -327,7 +320,6 @@ std::pair< clause, int > solver::analyze_conflict( clause confl ) {
     int backjump_level = 1;
     if ( learnt_clause.size() > 1 ) {
         int max_i = 1;
-        for ( int i = 2; i < learnt_clause.size(); ++i ) {
         for ( int i = 2; i < learnt_clause.size(); ++i ) {
             if ( levels[learnt_clause[i].var()] > levels[learnt_clause[max_i].var()] ) {
                 max_i = i;
@@ -376,7 +368,7 @@ bool solver::solve() {
             }
         
             assert( conflict_idx != -1 );
-            auto [learnt, level] = analyze_conflict( form[conflict_idx] );
+            auto [learnt, level] = analyze_conflict();
             if ( level == 0 ) {
                 return false;
             }
