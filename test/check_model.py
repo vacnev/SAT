@@ -57,6 +57,7 @@ def verify_model( filename, model_file ):
             sat = sat or ( neg and val == '0' ) or ( not neg and val == '1' )
 
         if not sat:
+            print( clause )
             return False
     return True
 
