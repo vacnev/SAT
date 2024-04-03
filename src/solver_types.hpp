@@ -147,7 +147,7 @@ struct clause {
             status = UNIT;
             watched = { ( data.size() > 1 ), 0 };
         }
-        if ( data.empty() ) {
+        else if ( data.empty() ) {
             status = CONFLICT;
             watched = { 0, 0 };
         }
@@ -274,10 +274,12 @@ struct formula {
     }
     void add_base_clause(clause c) {
         base.push_back(std::move(c));
+        clause_count++;
     }
 
     void add_learnt_clause(clause c) {
         learnt.push_back(std::move(c));
+        clause_count++;
     }
 
     auto size() const {
