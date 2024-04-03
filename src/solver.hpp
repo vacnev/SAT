@@ -32,6 +32,10 @@ struct solver {
      **/
     std::size_t index;
 
+    
+    // current index of conflict
+    int conflict_idx = -1;
+
     /**
      * stores indices into _trail_ corresponding to decisions made during
      * search that can be backtracked to 
@@ -122,7 +126,7 @@ struct solver {
      * performs conflict analysis, returning a new learnt clause
      * and backjump index
      */
-    std::pair< clause, int > analyze_conflict();
+    std::pair< clause, int > analyze_conflict( clause confl );
 
     /**
      * backjumps to the level of the last UIP
