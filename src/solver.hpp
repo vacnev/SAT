@@ -126,12 +126,12 @@ struct solver {
      * performs conflict analysis, returning a new learnt clause
      * and backjump index
      */
-    std::pair< clause, int > analyze_conflict( clause confl );
+    std::pair< clause, int > analyze_conflict();
 
     /**
      * backjumps to the level of the last UIP
     */
-    void backjump( int level, clause& learnt );
+    void backjump( int level, clause learnt );
 
     /*
      * solves the formula _form_, returning true if it is SAT

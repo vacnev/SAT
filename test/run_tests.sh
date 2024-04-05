@@ -9,3 +9,9 @@ echo "------ UNSAT ------"
 for f in ./all_unsat/*; do
 	../build/fousaty $f
 done
+
+echo "------ BIG FAT UNSAT ------"
+
+for f in ./big_fat_unsat/*; do
+	../build/fousaty $f
+done

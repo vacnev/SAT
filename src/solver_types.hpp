@@ -198,6 +198,7 @@ struct clause {
         if (lit != l1) {
             using std::swap;
             swap( w1, w2 );
+            swap( l1, l2 );
         }
 
         // try to avoid moving watch

@@ -18,7 +18,6 @@ void solver::initialize_clause( const clause& cl, int clref ) {
     // init occurs vecs
     occurs[l1].push_back( clref );
     occurs[l2].push_back( clref );
-
 }
 
 void solver::initialize_structures() {
@@ -105,7 +104,7 @@ void solver::log_solver_state( const std::string &title ) {
 
     log.log() << "LEVELS:\n";
     log.log() << "[ ";
-    for ( auto &[k, v] : levels ) { log.log() << k << " - " << v << "; "; }
+    for ( const auto &[k, v] : levels ) { log.log() << k << " - " << v << "; "; }
     log.log() << " ]\n\n";
 
     log.log() << "REASONS:\n";
@@ -114,7 +113,7 @@ void solver::log_solver_state( const std::string &title ) {
     log.log() << " ]\n\n";
 
     // log.log() << "OCCURS:\n";
-    // for ( auto &[k, v] : occurs ) {
+    // for ( const auto &[k, v] : occurs ) {
     //     log.log() << k << " - [ ";
     //     for ( auto x : v ) { log_clause(form[x], "Occurs" + std::to_string(k)); }
     //     log.log() << " ]\n";
@@ -137,7 +136,6 @@ void solver::assign( var_t x, bool v ) {
     levels[x] = decisions.size();
 }
 
-/*
 bool solver::unit_propagation() {
 
     while ( index < trail.size() ) {
@@ -147,13 +145,13 @@ bool solver::unit_propagation() {
         auto& clause_indices = occurs[-lit];
         auto og_size = clause_indices.size();
 
-        log.log() << "UP LIT: " << lit << '\n';
+        // log.log() << "UP LIT: " << lit << '\n';
 
         for ( int curr_entry = 0; curr_entry < og_size; ++curr_entry ) {
             int i = clause_indices[curr_entry];
             clause& c = form[i];
 
-            log_clause(c, "UP CLAUSE ");
+            // log_clause(c, "UP CLAUSE ");
 
             clause::clause_status status = c.resolve_watched(i, -lit, asgn, occurs);
 
@@ -164,9 +162,9 @@ bool solver::unit_propagation() {
                 assign( l.var(), l.pol() );
                 reasons.push_back( i );
 
-                log.log() << "resovled lit: " << lit.var() << '\n';
-                log_clause(c, "UNIT PROPAGATION ");
-                log_solver_state("UNIT PROPAGATION ");
+                // log.log() << "resovled lit: " << lit.var() << '\n';
+                // log_clause(c, "UNIT PROPAGATION ");
+                // log_solver_state("UNIT PROPAGATION ");
                 
             } 
             // Conflict in UP -> some clause has -lit as the last literal
@@ -187,8 +185,9 @@ bool solver::unit_propagation() {
 
     return true;
 }
-*/
 
+
+/*
 bool solver::unit_propagation() {
 
     bool changed = true;
@@ -235,6 +234,7 @@ bool solver::unit_propagation() {
 
     return true;
 }
+*/
 
 void solver::add_base_clause(clause c) {
     form.add_base_clause(std::move(c));
@@ -264,50 +264,57 @@ void solver::backtrack() {
     index = trail.size() - 1;
 }
 
-void solver::backjump( int level, clause& learnt ) {
+/* invariant - learnt has two watched literals set, the second of which is the
+ * UIP and the first one being the one with second highest DL */
+void solver::backjump( int level, clause learnt ) {
 
-    int j = ( level > 0 ) ? decisions[level - 1] : decisions[0];
+    assert( level < decisions.size() );
 
+    // index of next decision level that is to be removed, i.e. all entries in
+    // trail after decisions[level] will be deleted. In case the _learnt_
+    // clause is unit, all decisions will be deleted;
+    int next_level = ( level > 0 ) ? decisions[level] : decisions[0];
 
-    // if level is 0 then delete the decision from trail as well
-    int i = j + ( level > 0 );
-
-    for ( int k = i ; k < trail.size(); ++k ) {
+    for ( int k = next_level ; k < trail.size(); ++k ) {
         asgn.unassign( trail[k].var() );
     }
 
     // adjust trail accordingly
     decisions.resize( level );
+    trail.resize( next_level );
+    reasons.resize( next_level );
 
-    trail.resize( i );
-    reasons.resize( i );
-
-    // initialize_clause( learnt, form.size() );
+    // unit propagate learnt clause
+    initialize_clause( learnt, form.size() );
+    add_learnt_clause( std::move( learnt ) ) ;
 
     // set head of propagation queue to last
-    index = ( trail.size() > 0 ) ? trail.size() - 1 : 0;
+    index = trail.size() - 1;
 }
 
-std::pair< clause, int > solver::analyze_conflict( clause confl ) {
+std::pair< clause, int > solver::analyze_conflict() {
 
     std::vector< lit_t > learnt_clause{ 0 };
     int ind = trail.size() - 1;
     lit_t uip = 0;
-    std::vector< int > reasons_learnt;
-
-    log_solver_state("conflict analysis");
-    log_clause( confl, "conflict clause" );
-    log.log() << std::endl;
-
     int lits_remaining = 0;
+    std::vector< int > reasons_learnt;
+    const clause& confl = form[conflict_idx];
+
+    // log_solver_state("conflict analysis");
+    // log_clause( confl, "conflict clause" );
+    // log.log() << std::endl;
 
     do {
 
-        log.log() << "Index: " << ind << "\n";
-        log_clause( confl, "currently resolved clause" );
-        log.log() << std::endl;
-        auto [l1, l2] = confl.watched_lits();
-
+        // log.log() << "Index: " << ind << "\n";
+        // log.log() << "lits:" << lits_remaining << std::endl;
+        // log_clause( confl, "currently resolved clause" );
+        // if (confl.learnt)
+        //     log.log() << "LERNAT" << std::endl;
+        // log.log() << std::endl;
+        // log_solver_state("conflict analysis");
+        
         for ( lit_t l : confl.data ) {
 
             if ( (l != uip ) && levels[l.var()] > 0 && !seen[l.var()] ) {
@@ -318,17 +325,17 @@ std::pair< clause, int > solver::analyze_conflict( clause confl ) {
                     reasons_learnt.push_back( reasons[ind] );
                 }
                 else {
+                    // log.log() << "lit: " << l << " level: " << levels[l.var()] << " current level: " << current_level() << std::endl;
                     lits_remaining++;
                 }
             }
         }
 
-        log_clause( clause( learnt_clause ), "ahoj" );
+        // log_clause( clause( learnt_clause ), "ahoj" );
 
         // find next clause to resolve with
         while ( !seen[trail[ind].var()] ) { ind--; };
-        log.log() << "index:" << ind << std::endl;
-        log.log() << "lits:" << lits_remaining << std::endl;
+        
 
 
         uip = trail[ind];
@@ -336,13 +343,19 @@ std::pair< clause, int > solver::analyze_conflict( clause confl ) {
         lits_remaining--;
 
         // last step - this will be equal to -1
-        if ( lits_remaining > 0)
+        if ( lits_remaining > 0) {
+            
+            // if ( reasons[ind] == -1 ) {
+            //     log_solver_state("BAD SOLVER STATE");
+            // }
+
             confl = form[reasons[ind]];
+        }
 
     } while (lits_remaining > 0);
 
     learnt_clause[0] = -uip;
-    log_clause(learnt_clause, "learnt_clause");
+    // log_clause(learnt_clause, "learnt_clause");
     auto to_clear = learnt_clause;
 
     // simplify learnt clause
@@ -394,7 +407,7 @@ std::pair< clause, int > solver::analyze_conflict( clause confl ) {
 
 bool solver::solve() {
 
-    log.set_log_level( log_level::TRACE );
+    // log.set_log_level( log_level::TRACE );
 
     if ( unsat ) {
         return false;
@@ -413,7 +426,7 @@ bool solver::solve() {
             }
         
             assert( conflict_idx != -1 );
-            auto [learnt, level] = analyze_conflict( form[conflict_idx] );
+            auto [learnt, level] = analyze_conflict();
             if ( level == 0 ) {
                 return false;
             }
@@ -422,14 +435,14 @@ bool solver::solve() {
                 level = 0;
             }
 
-            backjump(level, learnt);
-            add_learnt_clause(std::move(learnt));
-            log_solver_state( "after backjump" );
+            backjump(level, std::move( learnt ) );
+            // add_learnt_clause(std::move(learnt));
+            // log_solver_state( "after backjump" );
             /*
             backtrack();
             */
         }
-        log_solver_state( "after unit prop" );
+        // log_solver_state( "after unit prop" );
     }
 
     return true;
