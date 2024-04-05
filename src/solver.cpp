@@ -299,7 +299,8 @@ std::pair< clause, int > solver::analyze_conflict() {
     lit_t uip = 0;
     int lits_remaining = 0;
     std::vector< int > reasons_learnt;
-    const clause& confl = form[conflict_idx];
+    // clause confl = form[conflict_idx];
+    int confl_idx = conflict_idx;
 
     // log_solver_state("conflict analysis");
     // log_clause( confl, "conflict clause" );
@@ -315,7 +316,7 @@ std::pair< clause, int > solver::analyze_conflict() {
         // log.log() << std::endl;
         // log_solver_state("conflict analysis");
         
-        for ( lit_t l : confl.data ) {
+        for ( lit_t& l : form[confl_idx].data ) {
 
             if ( (l != uip ) && levels[l.var()] > 0 && !seen[l.var()] ) {
                 seen[l.var()] = 1;
@@ -349,7 +350,8 @@ std::pair< clause, int > solver::analyze_conflict() {
             //     log_solver_state("BAD SOLVER STATE");
             // }
 
-            confl = form[reasons[ind]];
+            // confl = form[reasons[ind]];
+            confl_idx = reasons[ind];
         }
 
     } while (lits_remaining > 0);
