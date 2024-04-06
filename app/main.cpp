@@ -19,7 +19,12 @@ int main( int argc, char *argv[] ){
         res = s.solve() ? "s SATISFIABLE" : "s UNSATISFIABLE";
         std::cout << res << "\n";
 
+        /*
         s.output_model( model_output );
+        for ( int i = 0; i < s.form.clause_count; i++ ) {
+            s.log_clause( s.form[i] , "Clause " + std::to_string(i) );
+        }
+        */
     }
 
     return 0;
