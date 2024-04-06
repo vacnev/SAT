@@ -2,6 +2,11 @@
 
 ![project_photo](FouSATy.png)
 
+# Current features:
+	- CDCL
+	- 2 watched literals
+	- EVSIDS
+
 # Building the solver:
 
 	$ cmake -S . -Bbuild -DCMAKE_BUILD_TYPE=Release
@@ -16,3 +21,5 @@ To run the solver on a dimacs file, run:
 # Team:
 - Václav Nevyhoštěný, učo: 514059
 - Vít Unčovský, učo: 514479
+
+
