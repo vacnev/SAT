@@ -1,0 +1,100 @@
+!_TAG_FILE_FORMAT	2	/extended format; --format=1 will not append ;" to lines/
+!_TAG_FILE_SORTED	1	/0=unsorted, 1=sorted, 2=foldcase/
+!_TAG_PROGRAM_AUTHOR	Darren Hiebert	/dhiebert@users.sourceforge.net/
+!_TAG_PROGRAM_NAME	Exuberant Ctags	//
+!_TAG_PROGRAM_URL	http://ctags.sourceforge.net	/official site/
+!_TAG_PROGRAM_VERSION	5.9~svn20110310	//
+CONFLICT	solver_types.hpp	/^        CONFLICT = 2,$/;"	e	enum:clause::clause_status
+NONE	logger.hpp	/^    NONE, TRACE$/;"	m	class:log_level
+SATISFIED	solver_types.hpp	/^        SATISFIED = 1,$/;"	e	enum:clause::clause_status
+UNDETERMINED	solver_types.hpp	/^        UNDETERMINED = 0,$/;"	e	enum:clause::clause_status
+UNIT	solver_types.hpp	/^        UNIT = 3$/;"	e	enum:clause::clause_status
+add_base_clause	solver.cpp	/^void solver::add_base_clause(clause c) {$/;"	f	class:solver
+add_base_clause	solver_types.hpp	/^    void add_base_clause(clause c) {$/;"	f	struct:formula
+add_learnt_clause	solver.cpp	/^void solver::add_learnt_clause(clause c) {$/;"	f	class:solver
+add_learnt_clause	solver_types.hpp	/^    void add_learnt_clause(clause c) {$/;"	f	struct:formula
+analyze_conflict	solver.cpp	/^std::pair< clause, int > solver::analyze_conflict( clause confl ) {$/;"	f	class:solver
+asgn	solver.hpp	/^    assignment asgn;$/;"	m	struct:solver
+asgn	solver_types.hpp	/^    std::vector< lbool > asgn;$/;"	m	struct:assignment
+assign	solver.cpp	/^void solver::assign( var_t x, bool v ) {$/;"	f	class:solver
+assignment	solver_types.hpp	/^    assignment(std::size_t count) : vars_count( count ), asgn( count + 1 ) {$/;"	f	struct:assignment
+assignment	solver_types.hpp	/^struct assignment {$/;"	s
+backjump	solver.cpp	/^void solver::backjump( int level, const clause& learnt ) {$/;"	f	class:solver
+backtrack	solver.cpp	/^void solver::backtrack() {$/;"	f	class:solver
+base	solver_types.hpp	/^    std::vector< clause > base;$/;"	m	struct:formula
+clause	solver_types.hpp	/^    clause(std::vector< lit_t > _data, bool _learnt = false) : learnt(_learnt), data(std::move(_data)) {$/;"	f	struct:clause
+clause	solver_types.hpp	/^struct clause {$/;"	s
+clause_count	solver_types.hpp	/^    std::size_t clause_count;$/;"	m	struct:formula
+clause_status	solver_types.hpp	/^    enum clause_status {$/;"	g	struct:clause
+confl_clause	solver.hpp	/^    int confl_clause;$/;"	m	struct:solver
+conflict_idx	solver.hpp	/^    int conflict_idx = -1;$/;"	m	struct:solver
+current_level	solver.hpp	/^    int current_level() const {$/;"	f	struct:solver
+data	solver_types.hpp	/^    std::vector< lit_t > data;$/;"	m	struct:clause
+decide	solver.cpp	/^void solver::decide( var_t x, bool v ) {$/;"	f	class:solver
+decisions	solver.hpp	/^    std::vector< int > decisions; $/;"	m	struct:solver
+enabled	logger.hpp	/^    bool enabled() const {$/;"	f	class:logger
+flip	solver_types.hpp	/^    void flip() {$/;"	f	struct:lit_t
+form	solver.hpp	/^    formula form;$/;"	m	struct:solver
+formula	solver_types.hpp	/^    formula( std::vector< clause > _base, std::size_t count_c, std::size_t count_v ) : base(std::move( _base )), $/;"	f	struct:formula
+formula	solver_types.hpp	/^struct formula {$/;"	s
+get_model	solver.cpp	/^std::vector< bool > solver::get_model() {$/;"	f	class:solver
+get_model_string	solver.cpp	/^std::string solver::get_model_string() {$/;"	f	class:solver
+get_unassigned	solver_types.hpp	/^    var_t get_unassigned() const {$/;"	f	struct:assignment
+heap	solver_types.hpp	/^    std::vector< std::pair< double, var_t > > heap;$/;"	m	struct:assignment
+ignore_line	parser.hpp	/^bool ignore_line( const std::string &line, size_t& pos ) {$/;"	f
+inc	solver_types.hpp	/^    double inc = 1.01;$/;"	m	struct:assignment
+index	solver.hpp	/^    std::size_t index;$/;"	m	struct:solver
+initialize_clause	solver.cpp	/^void solver::initialize_clause( const clause& cl, int clref, bool first_up = true) {$/;"	f	class:solver
+initialize_structures	solver.cpp	/^void solver::initialize_structures() {$/;"	f	class:solver
+learnt	solver_types.hpp	/^    bool learnt;$/;"	m	struct:clause
+learnt	solver_types.hpp	/^    std::vector< clause > learnt;$/;"	m	struct:formula
+level	logger.hpp	/^    log_level level = log_level::NONE;$/;"	m	class:logger
+levels	solver.hpp	/^    std::unordered_map< var_t, int > levels;$/;"	m	struct:solver
+lit	solver_types.hpp	/^    int lit;$/;"	m	struct:lit_t
+lit_t	solver_types.hpp	/^    lit_t() : lit(0) { std::cout << "WARNING: default lit constr called\\n"; };$/;"	f	struct:lit_t
+lit_t	solver_types.hpp	/^    lit_t(std::convertible_to< int > auto&& l) {$/;"	f	struct:lit_t
+lit_t	solver_types.hpp	/^struct lit_t {$/;"	s
+lit_unassigned	solver_types.hpp	/^    bool lit_unassigned( lit_t lit ) const {$/;"	f	struct:assignment
+log	logger.hpp	/^    std::ofstream& log() {$/;"	f	class:logger
+log	solver.hpp	/^    logger log;$/;"	m	struct:solver
+log_clause	solver.cpp	/^void solver::log_clause( const clause& c, const std::string &title ) {$/;"	f	class:solver
+log_level	logger.hpp	/^enum class log_level {$/;"	c
+log_solver_state	solver.cpp	/^void solver::log_solver_state( const std::string &title ) {$/;"	f	class:solver
+logger	logger.hpp	/^    logger( const std::string &logs, const std::string &res ) : logs( logs )$/;"	f	class:logger
+logger	logger.hpp	/^    logger() : logs("logs.txt"), results("results.txt") {  }$/;"	f	class:logger
+logger	logger.hpp	/^class logger {$/;"	c
+logresult	logger.hpp	/^    std::ofstream& logresult() {$/;"	f	class:logger
+logs	logger.hpp	/^    std::ofstream logs;$/;"	m	class:logger
+occurs	solver.hpp	/^    std::unordered_map< int, std::vector< int > > occurs;$/;"	m	struct:solver
+operator =	solver_types.hpp	/^    auto& operator=(std::convertible_to< int > auto&& l) {$/;"	f	struct:lit_t
+operator []	solver_types.hpp	/^    clause& operator[]( std::size_t index ) {$/;"	f	struct:formula
+operator []	solver_types.hpp	/^    const clause& operator[]( std::size_t index ) const {$/;"	f	struct:formula
+operator []	solver_types.hpp	/^    lbool& operator[](var_t var) {$/;"	f	struct:assignment
+operator int	solver_types.hpp	/^    operator int() {$/;"	f	struct:lit_t
+output_model	solver.cpp	/^void solver::output_model( const std::string &filename ) {$/;"	f	class:solver
+parse_dimacs	parser.hpp	/^formula parse_dimacs( const std::string &filename ) {$/;"	f
+parse_int	parser.hpp	/^int parse_int( const std::string &line, size_t &pos ) {$/;"	f
+pol	solver_types.hpp	/^    bool pol() const {$/;"	f	struct:lit_t
+reasons	solver.hpp	/^    std::vector< int > reasons;$/;"	m	struct:solver
+resolve_watched	solver_types.hpp	/^    clause_status resolve_watched(int clause_index, lit_t lit, assignment& asgn, std::unordered_map< int, std::vector< int > >& occurs) {$/;"	f	struct:clause
+results	logger.hpp	/^    std::ofstream results;$/;"	m	class:logger
+satisfies_literal	solver_types.hpp	/^    bool satisfies_literal( lit_t lit ) {$/;"	f	struct:assignment
+seen	solver.hpp	/^    std::unordered_map< var_t, int > seen;$/;"	m	struct:solver
+set_log_level	logger.hpp	/^    void set_log_level( log_level newlev ) {$/;"	f	class:logger
+size	solver_types.hpp	/^    auto size() const {$/;"	f	struct:clause
+size	solver_types.hpp	/^    auto size() const {$/;"	f	struct:formula
+skip_ws	parser.hpp	/^void skip_ws( const std::string &line, size_t &pos ){$/;"	f
+solve	solver.cpp	/^bool solver::solve() {$/;"	f	class:solver
+solver	solver.hpp	/^    solver(formula _form) : form(std::move(_form)), asgn(form.var_count) {$/;"	f	struct:solver
+solver	solver.hpp	/^struct solver {$/;"	s
+status	solver_types.hpp	/^    clause_status status;$/;"	m	struct:clause
+trail	solver.hpp	/^    std::vector< lit_t > trail;$/;"	m	struct:solver
+unassign	solver_types.hpp	/^    void unassign(var_t var) {$/;"	f	struct:assignment
+unit_propagation	solver.cpp	/^bool solver::unit_propagation() {$/;"	f	class:solver
+unsat	solver.hpp	/^    bool unsat = false;$/;"	m	struct:solver
+var	solver_types.hpp	/^    int var() const {$/;"	f	struct:lit_t
+var_count	solver_types.hpp	/^    std::size_t var_count;$/;"	m	struct:formula
+var_unassigned	solver_types.hpp	/^    bool var_unassigned( var_t var ) const {$/;"	f	struct:assignment
+vars_count	solver_types.hpp	/^    std::size_t vars_count;$/;"	m	struct:assignment
+watched	solver_types.hpp	/^    std::pair< int, int > watched;$/;"	m	struct:clause
+watched_lits	solver_types.hpp	/^    std::pair< lit_t, lit_t > watched_lits() const {$/;"	f	struct:clause

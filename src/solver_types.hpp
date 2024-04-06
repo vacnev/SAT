@@ -1,6 +1,7 @@
 #pragma once
 
 #include <algorithm>
+#include <cassert>
 #include <concepts>
 #include <iostream>
 #include <iterator>
@@ -45,62 +46,217 @@ struct lit_t {
     }
 };
 
+
+struct evsids_heap {
+
+    /* priorities of elements in the heap */
+    std::unordered_map< var_t, double > priorities;
+
+    /* indices of elements in the heap */
+    std::unordered_map< var_t, int > indices;
+
+    /* stores the actual max heap of variables */
+    std::vector< var_t > heap;
+
+    int vars_count;
+
+
+    evsids_heap( std::size_t count ) : vars_count( count ) {
+        for ( std::size_t i = 1; i <= count; ++i ) {
+            heap.emplace_back( i );
+            priorities[i] = 1.0;
+            indices[i] = i-1;
+        }
+    }
+
+
+    bool lt( const var_t &l, const var_t &r ) {
+        return priorities[l] < priorities[r];
+    }
+
+    int parent( int idx ) {
+        return (idx-1) / 2;
+        
+    }
+
+    int left( int idx ) {
+        return 2 * idx + 1;
+    }
+
+    int right( int idx ) {
+        return 2 * idx + 2;
+    }
+
+    void increase_priority( var_t v, float inc) {
+        // if increased to larger val than 1e100, rescale prios/increment
+        if ( ( priorities[v] += inc ) > 1e100 ) {
+            for ( int i = 1; i < vars_count; i++ ) {
+                priorities[v] *= 1e-100;
+                inc *= 1e-100; 
+            }
+        }
+
+        // if the variable is present in the heap
+        if ( indices[v] != -1 ) {
+            propagate( v );
+        }
+    }
+
+
+    bool valid_heap ( int idx ) {
+        bool valid = true;
+
+        if ( left(idx) < heap.size() ) {
+            valid = ( priorities[heap[idx]] >= priorities[heap[left(idx)]] ) && valid_heap( left(idx) );
+        }
+
+        if ( valid && ( right(idx) < heap.size()  ) )  {
+            valid = ( priorities[heap[idx]] >= priorities[heap[right(idx)]] ) && valid_heap( right(idx) );
+        }
+
+        if (!valid) {
+            std::cout << "NOT VALID" << idx << heap[idx] << std::endl;
+        }
+        return valid;
+    }
+    void consistent_heap() {
+        std::cout << "heaapus";
+
+        assert(valid_heap(0));
+
+        for ( auto &[v, idx] : indices ) {
+            std::cout << v << "  " << idx << std::endl;
+            if ( idx == -1 ) {
+                for ( auto y : heap ) { 
+                    assert( y != v ); 
+                }
+            }
+
+            else {
+                std::cout << heap[idx] << std::endl;
+                assert( heap[idx] == v );
+            }
+        }
+    }
+    
+    // swap variables in the heap and their respective indices
+    void heap_swap( int l, int r ) {
+        std::swap( indices[heap[l]], indices[heap[r]] );
+        std::swap( heap[l], heap[r] );
+
+    }
+
+    // propagate heap from variable v upward, i.e. adjust the heap to reflect the new
+    // priority in priorities[v]
+    void propagate( var_t v ) {
+
+        int idx = indices[v];
+        int parent_idx = 0;
+
+        while ( idx != 0 ) {
+            parent_idx = parent( idx );
+
+            if ( lt( heap[parent_idx], heap[idx] ) ){
+               heap_swap( idx, parent_idx );
+               idx = parent_idx;
+            }
+
+            else { break; }
+        }
+    }
+    
+    void heapify( var_t v ) {
+
+        int idx = indices[v];
+        int child_idx = left(idx);
+        int right_idx;
+        std::cout << "SIZE" << heap.size(); 
+
+        while ( child_idx < heap.size() ) {
+            std::cout << "\n\n" << heap[idx] << heap[child_idx] << std::endl;
+            right_idx = right( idx );
+
+            // child idx stores index of child with larger prio
+            if ( lt( heap[child_idx], heap[right_idx] ) ) {
+                child_idx = right_idx;
+            }
+
+            // if current has lower priority then the larger child, swap them &
+            // continue
+            if ( lt( heap[idx], heap[child_idx] ) ){
+                std::cout << "smaller than" << heap[child_idx] << std::endl;
+                heap_swap( child_idx, idx );
+
+                idx = child_idx;
+                child_idx = left( idx );
+
+                std::cout << idx;
+            }
+
+
+            // else terminate
+            else { break; }
+        }
+        std::cout << "done" << idx << "\n"; 
+    }
+
+    var_t extract_max(){
+        // signal empty heap
+        if ( heap.size() == 0 ) {
+            return 0;
+        }
+
+        var_t v_max = heap[0];
+
+        heap_swap( 0, heap.size() - 1 );
+        for ( auto x : heap ) {
+            std::cout << x << ", ";
+        }
+        heap.pop_back();
+        std::cout << std::endl;
+        std::cout << heap.size() << "\n";
+
+        for ( auto x : heap ) {
+            std::cout << x << ", ";
+        }
+
+        indices[v_max] = -1;
+        std::cout << heap[0] << indices[heap[0]] << std::endl;
+        std::cout << v_max << indices[v_max] << std::endl;
+
+        // heapify from root
+        heapify( heap[0] );
+
+        return v_max;
+    }
+
+    void insert( var_t v ) {
+        // v is not in the heap
+        if ( indices[v] == -1 ) {
+            heap.push_back( v );
+            indices[v] = heap.size() - 1;
+            propagate( heap.back() );
+        }
+    }
+
+};
+
+
 struct assignment {
     std::size_t vars_count;
     std::vector< lbool > asgn;
 
-    // EVSIDS
-    double inc = 1.01;
-    std::vector< std::pair< double, var_t > > heap;
-
-    // phase
-
-    assignment(std::size_t count) : vars_count( count ), asgn( count + 1 ) {
-        for ( std::size_t i = 1; i <= count; ++i ) {
-            heap.emplace_back( 1.0, i ); // add random init
-            std::make_heap( heap.begin(), heap.end() );
-        }
-    }
-
-
-    /* iff all assigned then 0 */
-    var_t get_unassigned() const {
-        // EVSIDS
-        // while ( asgn[heap.front().second] ) {
-        //     std::pop_heap(heap.front(), heap.back());
-        //     heap.pop_back();
-        //     // kdy vracet, muzeme jen drzet back it misto pop_back
-        // }
-
-        // if ( !heap.empty() ) {
-        //     var_t var = heap.front();
-        //     std::pop_heap(heap.front(), heap.back());
-        //     heap.pop_back();
-        //     return var;
-        // }
-
-        // naive
-        for ( std::size_t i = 1; i <= vars_count; ++i) {
-            if ( !asgn[i] ) {
-                return i;
-            }
-        }
-
-        return 0;
-    }
-
-    // void increase_priority(const std::vector< lit_t >& cl) {
-    //     for ( lit_t lit : cl ) {
-    //         var_t var = lit.var();
-
-    //     }
-    // }
+    assignment(std::size_t count) : vars_count( count ), asgn( count + 1 ) { }
 
     lbool& operator[](var_t var) {
         return asgn[var];
     }
 
-    void unassign(var_t var) {
+
+    void assign( var_t var, bool v ) {
+        asgn[var] = v;
+    }
+    void unassign( var_t var ) {
         asgn[var] = std::nullopt;
     }
 

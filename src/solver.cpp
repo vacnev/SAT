@@ -83,6 +83,18 @@ void solver::log_solver_state( const std::string &title ) {
     */
 
     log.log() << title << "\n";
+    log.log() << "\n\nEVSIDS:\n";
+    for ( auto x : heap.heap ) {
+        log.log() << x << " - " << heap.priorities[x] << "\n";
+    }
+
+    
+    for ( auto &[k, v] : heap.indices ) {
+        log.log() << "Var " << k << " has index " << v << "\n";
+    }
+
+    log.log() << "STATE:\n\n\n";
+
     log.log() << "index: " << index << "\n";
     log.log() << "TRAIL:\n";
     log.log() << "[ ";
@@ -98,7 +110,7 @@ void solver::log_solver_state( const std::string &title ) {
     log.log() << " ]\n\n";
 
     log.log() << "DECISIONS:\n";
-    log.log() << "[ ";
+    log.log() << "[ ";;
     for ( auto x : decisions ) { log.log() << x << ", "; }
     log.log() << " ]\n\n";
 
@@ -130,10 +142,39 @@ void solver::decide( var_t x, bool v ) {
 }
 
 void solver::assign( var_t x, bool v ) {
-    asgn[x] = v;
+    asgn.assign( x, v );
     lit_t l = ( v ) ? x : -x;
     trail.push_back(l);
     levels[x] = decisions.size();
+}
+
+void solver::unassign( var_t x ){
+    asgn.unassign( x );
+
+    // potentially return x back to the evsids heap
+    heap.insert( x );
+}
+
+void solver::decay_var_priority() {
+    inc *= var_decay;
+}
+
+void solver::increase_var_priority( var_t v ) {
+    heap.increase_priority( v, inc );
+}
+
+/* iff all assigned then 0 */
+var_t solver::get_unassigned() {
+        var_t v_max = 0;
+
+        // FIXME: surely a better way to avoid doing this in the heap somehow
+        do {
+            v_max = heap.extract_max();
+            log_solver_state("after extract");
+        }
+        while ( !asgn.var_unassigned( v_max ) );
+
+        return v_max;
 }
 
 bool solver::unit_propagation() {
@@ -154,8 +195,6 @@ bool solver::unit_propagation() {
             // log_clause(c, "UP CLAUSE ");
 
             clause::clause_status status = c.resolve_watched(i, -lit, asgn, occurs);
-
-            
 
             if ( status == clause::UNIT ) {
                 lit_t l = c.watched_lits().second; 
@@ -246,7 +285,7 @@ void solver::add_learnt_clause(clause c) {
 
 void solver::backtrack() {
     for ( std::size_t i = decisions.back() + 1; i < trail.size(); ++i ) {
-        asgn.unassign( trail[i].var() );
+        unassign( trail[i].var() );
     }
 
     // decisions.back() contains idx to trail of last decision
@@ -264,8 +303,9 @@ void solver::backtrack() {
     index = trail.size() - 1;
 }
 
+
 /* invariant - learnt has two watched literals set, the second of which is the
- * UIP and the first one being the one with second highest DL */
+ * UIP and the first one is the literal with second highest DL after UIP */
 void solver::backjump( int level, clause learnt ) {
 
     assert( level < decisions.size() );
@@ -276,7 +316,7 @@ void solver::backjump( int level, clause learnt ) {
     int next_level = ( level > 0 ) ? decisions[level] : decisions[0];
 
     for ( int k = next_level ; k < trail.size(); ++k ) {
-        asgn.unassign( trail[k].var() );
+        unassign( trail[k].var() );
     }
 
     // adjust trail accordingly
@@ -302,7 +342,7 @@ std::pair< clause, int > solver::analyze_conflict() {
     // clause confl = form[conflict_idx];
     int confl_idx = conflict_idx;
 
-    // log_solver_state("conflict analysis");
+    log_solver_state("conflict analysis");
     // log_clause( confl, "conflict clause" );
     // log.log() << std::endl;
 
@@ -318,8 +358,10 @@ std::pair< clause, int > solver::analyze_conflict() {
         
         for ( lit_t& l : form[confl_idx].data ) {
 
-            if ( (l != uip ) && levels[l.var()] > 0 && !seen[l.var()] ) {
+            if ( ( l != uip ) && levels[l.var()] > 0 && !seen[l.var()] ) {
                 seen[l.var()] = 1;
+
+                increase_var_priority( l.var() );
 
                 if ( levels[l.var()] < current_level() ) {
                     learnt_clause.push_back( l );
@@ -357,31 +399,6 @@ std::pair< clause, int > solver::analyze_conflict() {
     } while (lits_remaining > 0);
 
     learnt_clause[0] = -uip;
-    // log_clause(learnt_clause, "learnt_clause");
-    auto to_clear = learnt_clause;
-
-    // simplify learnt clause
-    /*
-    int i, j;
-    for ( i = j = 1; i < learnt_clause.size(); ++i) {
-        if ( reasons_learnt[i - 1] == -1) {
-            learnt_clause[j++] = learnt_clause[i];
-        } else {
-            clause& confl = form[reasons_learnt[i - 1]];
-            auto [l1, l2] = confl.watched_lits();
-
-            for ( lit_t l : confl.data ) {
-                if ( l != l2 && levels[l.var()] > 0 && !seen[l.var()] ) {
-                    learnt_clause[j++] = learnt_clause[i];
-                    break;
-                }
-            }
-        }
-    }
-
-    learnt_clause.resize(j);
-    learnt_clause.shrink_to_fit();
-    */
 
     // find backjump level
     int backjump_level = -1;
@@ -393,23 +410,26 @@ std::pair< clause, int > solver::analyze_conflict() {
             }
         }
 
-        std::swap(learnt_clause[1], learnt_clause[max_i]);
+        // swap highest DL literal
+        std::swap( learnt_clause[1], learnt_clause[max_i] );
         backjump_level = levels[learnt_clause[1].var()];
     }
 
-    clause learnt( std::move(learnt_clause), true );
-    
     // clear seen
-    for ( lit_t l : to_clear ) {
+    for ( const lit_t &l : learnt_clause ) {
         seen[l.var()] = 0;
     }
 
+    // construct clause ( init watches to UIP & highest DL literal )
+    clause learnt( std::move(learnt_clause), true );
+    
     return { learnt, backjump_level };
 }
 
+
 bool solver::solve() {
 
-    // log.set_log_level( log_level::TRACE );
+    log.set_log_level( log_level::TRACE );
 
     if ( unsat ) {
         return false;
@@ -418,9 +438,11 @@ bool solver::solve() {
     // first UP
     if ( !unit_propagation() ) { return false; }
 
-    while ( var_t var = asgn.get_unassigned() ) {
+    while ( var_t var = get_unassigned() ) {
 
         decide(var, false);
+        log_solver_state( "ahojky" );
+        heap.consistent_heap();
 
         while ( !unit_propagation() ) {
             if ( decisions.empty() ) {
@@ -429,6 +451,9 @@ bool solver::solve() {
         
             assert( conflict_idx != -1 );
             auto [learnt, level] = analyze_conflict();
+            decay_var_priority();
+
+
             if ( level == 0 ) {
                 return false;
             }
@@ -438,14 +463,12 @@ bool solver::solve() {
             }
 
             backjump(level, std::move( learnt ) );
-            // add_learnt_clause(std::move(learnt));
-            // log_solver_state( "after backjump" );
-            /*
-            backtrack();
-            */
+            log_solver_state( "after_conflict" );
+            heap.consistent_heap();
         }
-        // log_solver_state( "after unit prop" );
     }
 
+    heap.consistent_heap();
+    log_solver_state( "final" );
     return true;
 };

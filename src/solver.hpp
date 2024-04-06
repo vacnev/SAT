@@ -17,6 +17,9 @@ struct solver {
     // index to confl clause
     int confl_clause;
 
+    // limit of learnt clauses
+    int learnt_limit = 50;
+
     /**
      * signals that solver is in an unsatisfiable state before the first unit
      * propagation, (contradictory unit clauses / empty clause)
@@ -63,10 +66,35 @@ struct solver {
      */
     std::unordered_map< var_t, int > levels;
 
+
+
+    /**
+     * VARIABLE SELECTION
+     */
+
+    /**
+     * stores the EVSIDS max heap structure containing all variables 
+     */
+    evsids_heap heap;
+
+    // increment for evsids
+    double inc = 1;
+
+    // decay factor used to multiply the increment
+    double var_decay = 1.01;
+
+    void decay_var_priority();
+    void increase_var_priority( var_t v );
+
+    // select next branching variable
+    var_t get_unassigned(); 
+
+
+
     /**
      * CONSTRUCTORS
      */
-    solver(formula _form) : form(std::move(_form)), asgn(form.var_count) {
+    solver(formula _form) : form(std::move(_form)), asgn(form.var_count), heap( form.var_count ) {
         initialize_structures();
     }
 
@@ -110,6 +138,8 @@ struct solver {
     // assigns, but without the new DL
     void assign( var_t x, bool v );
 
+    // unassigns variable, inserting back into evsids heap and updating asgn struct
+    void unassign( var_t x );
     /**
      * processes all currently enqueued assignments in trail, starting 
      * from the _index_ entry

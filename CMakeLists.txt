@@ -5,7 +5,7 @@ project(fousaty)
 set(CMAKE_CXX_STANDARD 20)
 set(CXX_OPTIONS -Wall -Wextra -Werror)
 set(CXX_DEBUG_OPTIONS -g)
-set(CXX_RELEASE_OPTIONS -O2)
+set(CXX_RELEASE_OPTIONS -O3)
 
 set(FOUSATY_LIBS
 		src/solver.cpp)
