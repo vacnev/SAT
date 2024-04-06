@@ -2,6 +2,11 @@
 
 ![project_photo](FouSATy.png)
 
+# Current features:
+	EVSIDS
+	CDCL
+	2 Watched literals
+
 # Building the solver:
 
 	$ cmake -S . -Bbuild -DCMAKE_BUILD_TYPE=Release
