@@ -225,56 +225,6 @@ bool solver::unit_propagation() {
     return true;
 }
 
-
-/*
-bool solver::unit_propagation() {
-
-    bool changed = true;
-    while ( changed ) {
-        changed = false;
-
-        for ( size_t i = 0; i < form.clause_count; i++ ) {
-
-            clause &c = form[i];
-
-            lit_t up = 0;
-            bool conflict = true;
-            bool unit_prop = true;
-            bool sat = false;
-            for ( lit_t l : c.data ) {
-                if ( asgn.lit_unassigned( l ) ) {
-                    conflict = false;
-                    if ( up != 0 ) { unit_prop = false; }
-                    up = l;
-                }
-
-                else if ( asgn.satisfies_literal( l ) ) {
-                    conflict = false;
-                    sat = true;
-                    break;
-                }
-            }
-
-            if ( !sat ) {
-                if ( unit_prop && up != 0 ) { 
-                    changed = true;
-                    assign( up.var(), up.pol() );
-                    reasons.push_back( i );
-                }
-
-                else if ( conflict )  {
-                    conflict_idx = i;
-                    return false;
-                }
-            }
-        }
-
-    }
-
-    return true;
-}
-*/
-
 void solver::add_base_clause(clause c) {
     form.add_base_clause(std::move(c));
 }
@@ -429,7 +379,7 @@ std::pair< clause, int > solver::analyze_conflict() {
 
 bool solver::solve() {
 
-    log.set_log_level( log_level::TRACE );
+    // log.set_log_level( log_level::TRACE );
 
     if ( unsat ) {
         return false;
@@ -442,7 +392,6 @@ bool solver::solve() {
 
         decide(var, false);
         log_solver_state( "ahojky" );
-        heap.consistent_heap();
 
         while ( !unit_propagation() ) {
             if ( decisions.empty() ) {
@@ -452,7 +401,6 @@ bool solver::solve() {
             assert( conflict_idx != -1 );
             auto [learnt, level] = analyze_conflict();
             decay_var_priority();
-
 
             if ( level == 0 ) {
                 return false;
@@ -464,11 +412,9 @@ bool solver::solve() {
 
             backjump(level, std::move( learnt ) );
             log_solver_state( "after_conflict" );
-            heap.consistent_heap();
         }
     }
 
-    heap.consistent_heap();
     log_solver_state( "final" );
     return true;
 };

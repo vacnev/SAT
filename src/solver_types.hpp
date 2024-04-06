@@ -114,18 +114,13 @@ struct evsids_heap {
             valid = ( priorities[heap[idx]] >= priorities[heap[right(idx)]] ) && valid_heap( right(idx) );
         }
 
-        if (!valid) {
-            std::cout << "NOT VALID" << idx << heap[idx] << std::endl;
-        }
         return valid;
     }
     void consistent_heap() {
-        std::cout << "heaapus";
 
         assert(valid_heap(0));
 
         for ( auto &[v, idx] : indices ) {
-            std::cout << v << "  " << idx << std::endl;
             if ( idx == -1 ) {
                 for ( auto y : heap ) { 
                     assert( y != v ); 
@@ -133,7 +128,6 @@ struct evsids_heap {
             }
 
             else {
-                std::cout << heap[idx] << std::endl;
                 assert( heap[idx] == v );
             }
         }
@@ -143,7 +137,6 @@ struct evsids_heap {
     void heap_swap( int l, int r ) {
         std::swap( indices[heap[l]], indices[heap[r]] );
         std::swap( heap[l], heap[r] );
-
     }
 
     // propagate heap from variable v upward, i.e. adjust the heap to reflect the new
@@ -170,34 +163,29 @@ struct evsids_heap {
         int idx = indices[v];
         int child_idx = left(idx);
         int right_idx;
-        std::cout << "SIZE" << heap.size(); 
 
         while ( child_idx < heap.size() ) {
-            std::cout << "\n\n" << heap[idx] << heap[child_idx] << std::endl;
             right_idx = right( idx );
 
             // child idx stores index of child with larger prio
-            if ( lt( heap[child_idx], heap[right_idx] ) ) {
+            if ( right_idx < heap.size() && lt( heap[child_idx], heap[right_idx] ) ) {
                 child_idx = right_idx;
             }
 
             // if current has lower priority then the larger child, swap them &
             // continue
             if ( lt( heap[idx], heap[child_idx] ) ){
-                std::cout << "smaller than" << heap[child_idx] << std::endl;
                 heap_swap( child_idx, idx );
 
                 idx = child_idx;
                 child_idx = left( idx );
 
-                std::cout << idx;
             }
 
 
             // else terminate
             else { break; }
         }
-        std::cout << "done" << idx << "\n"; 
     }
 
     var_t extract_max(){
@@ -209,23 +197,14 @@ struct evsids_heap {
         var_t v_max = heap[0];
 
         heap_swap( 0, heap.size() - 1 );
-        for ( auto x : heap ) {
-            std::cout << x << ", ";
-        }
         heap.pop_back();
-        std::cout << std::endl;
-        std::cout << heap.size() << "\n";
 
-        for ( auto x : heap ) {
-            std::cout << x << ", ";
-        }
 
         indices[v_max] = -1;
-        std::cout << heap[0] << indices[heap[0]] << std::endl;
-        std::cout << v_max << indices[v_max] << std::endl;
 
         // heapify from root
         heapify( heap[0] );
+
 
         return v_max;
     }
