@@ -349,6 +349,28 @@ std::pair< clause, int > solver::analyze_conflict() {
     } while (lits_remaining > 0);
 
     learnt_clause[0] = -uip;
+    auto to_clear = learnt_clause;
+
+    // simplify learnt clause
+    int i, j;
+    for ( i = j = 1; i < learnt_clause.size(); ++i) {
+        if ( reasons_learnt[i - 1] == -1) {
+            learnt_clause[j++] = learnt_clause[i];
+        } else {
+            clause& confl = form[reasons_learnt[i - 1]];
+            auto [l1, l2] = confl.watched_lits();
+
+            for ( lit_t l : confl.data ) {
+                if ( l != l2 && levels[l.var()] > 0 && !seen[l.var()] ) {
+                    learnt_clause[j++] = learnt_clause[i];
+                    break;
+                }
+            }
+        }
+    }
+
+    learnt_clause.resize(j);
+    learnt_clause.shrink_to_fit();
 
     // find backjump level
     int backjump_level = -1;
@@ -366,7 +388,7 @@ std::pair< clause, int > solver::analyze_conflict() {
     }
 
     // clear seen
-    for ( const lit_t &l : learnt_clause ) {
+    for ( const lit_t &l : to_clear ) {
         seen[l.var()] = 0;
     }
 
