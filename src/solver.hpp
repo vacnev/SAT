@@ -17,9 +17,6 @@ struct solver {
     // index to confl clause
     int confl_clause;
 
-    // limit of learnt clauses
-    int learnt_limit = 50;
-
     /**
      * signals that solver is in an unsatisfiable state before the first unit
      * propagation, (contradictory unit clauses / empty clause)
@@ -35,7 +32,6 @@ struct solver {
      **/
     std::size_t index;
 
-    
     // current index of conflict
     int conflict_idx = -1;
 

@@ -60,7 +60,6 @@ struct evsids_heap {
 
     int vars_count;
 
-
     evsids_heap( std::size_t count ) : vars_count( count ) {
         for ( std::size_t i = 1; i <= count; ++i ) {
             heap.emplace_back( i );
@@ -69,14 +68,12 @@ struct evsids_heap {
         }
     }
 
-
     bool lt( const var_t &l, const var_t &r ) {
         return priorities[l] < priorities[r];
     }
 
     int parent( int idx ) {
         return (idx-1) / 2;
-        
     }
 
     int left( int idx ) {
@@ -102,7 +99,6 @@ struct evsids_heap {
         }
     }
 
-
     bool valid_heap ( int idx ) {
         bool valid = true;
 
@@ -116,6 +112,7 @@ struct evsids_heap {
 
         return valid;
     }
+
     void consistent_heap() {
 
         assert(valid_heap(0));
@@ -149,7 +146,7 @@ struct evsids_heap {
         while ( idx != 0 ) {
             parent_idx = parent( idx );
 
-            if ( lt( heap[parent_idx], heap[idx] ) ){
+            if ( lt( heap[parent_idx], heap[idx] ) ) {
                heap_swap( idx, parent_idx );
                idx = parent_idx;
             }
@@ -199,14 +196,40 @@ struct evsids_heap {
         heap_swap( 0, heap.size() - 1 );
         heap.pop_back();
 
-
         indices[v_max] = -1;
 
         // heapify from root
         heapify( heap[0] );
 
-
         return v_max;
+    }
+
+    void remove_first_n( size_t n ) {
+        for ( int i = 0; i < n; i++ ) {
+            indices[heap[i]] = -1;
+        }
+
+        // std::cout << heap.size() << " n " << n << std::endl;
+        heap.erase( heap.begin(), std::next(heap.begin(), n) );
+        // std::cout << heap.size() << std::endl;
+
+        for ( var_t v : heap ) {
+            indices[v] -= n;
+        }
+
+        for ( size_t i = 1; i <= std::min( n + 1, heap.size() - 1 ); i++ ) {
+            propagate( heap[i] );
+        }
+
+        assert( valid_heap(0) );
+    }
+
+    void clear() {
+        for ( auto &[v, idx] : indices ) {
+            idx = -1;
+        }
+
+        heap.clear();
     }
 
     void insert( var_t v ) {

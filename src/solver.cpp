@@ -165,16 +165,16 @@ void solver::increase_var_priority( var_t v ) {
 
 /* iff all assigned then 0 */
 var_t solver::get_unassigned() {
-        var_t v_max = 0;
+    var_t v_max = 0;
 
-        // FIXME: surely a better way to avoid doing this in the heap somehow
-        do {
-            v_max = heap.extract_max();
-            log_solver_state("after extract");
-        }
-        while ( !asgn.var_unassigned( v_max ) );
+    // FIXME: surely a better way to avoid doing this in the heap somehow - spis ne
+    do {
+        v_max = heap.extract_max();
+        log_solver_state("after extract");
+    }
+    while ( !asgn.var_unassigned( v_max ) );
 
-        return v_max;
+    return v_max;
 }
 
 bool solver::unit_propagation() {
