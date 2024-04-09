@@ -7,6 +7,7 @@
 	CDCL
 	2 Watched literals
 	PHASE SAVING
+	RESTARTS
 
 # Building the solver:
 
