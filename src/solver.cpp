@@ -166,15 +166,18 @@ void solver::increase_var_priority( var_t v ) {
 void solver::restart() {
     change_restart_limit();
     conflicts = 0;
-    index = decisions[0] - 1;
+    index = decisions[0];
     decisions.clear();
 
-    for ( int k = index + 1 ; k < trail.size(); ++k ) {
+    for ( int k = index ; k < trail.size(); ++k ) {
         unassign( trail[k].var() );
     }
 
-    trail.resize( index + 1 );
-    reasons.resize( index + 1 );
+    trail.resize( index );
+    reasons.resize( index );
+
+    if ( index > 0 )
+        --index;
 }
 
 /* iff all assigned then 0 */
