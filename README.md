@@ -6,6 +6,7 @@
 	EVSIDS
 	CDCL
 	2 Watched literals
+	PHASE SAVING
 
 # Building the solver:
 

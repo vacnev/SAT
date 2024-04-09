@@ -164,7 +164,7 @@ void solver::increase_var_priority( var_t v ) {
 }
 
 /* iff all assigned then 0 */
-var_t solver::get_unassigned() {
+std::pair< var_t, bool > solver::get_unassigned() {
     var_t v_max = 0;
 
     // FIXME: surely a better way to avoid doing this in the heap somehow - spis ne
@@ -174,7 +174,32 @@ var_t solver::get_unassigned() {
     }
     while ( !asgn.var_unassigned( v_max ) );
 
-    return v_max;
+    bool pol = false;
+    lbool& saved = asgn.saved_phase(v_max);
+    if ( saved ) {
+
+        switch ( asgn.decision_count % 100 ) {
+            case 0:
+                pol = *saved;
+                break;
+            case 1:
+                pol = !*saved;
+                break;
+            case 3:
+                pol = rand_pol();
+                break;
+            default:
+                break;
+        }
+    }
+
+    saved = pol;
+
+    if ( ++asgn.decision_count >= asgn.period ) {
+        asgn.decision_count = 0;
+    }
+
+    return { v_max, pol };
 }
 
 bool solver::unit_propagation() {
@@ -410,7 +435,16 @@ bool solver::solve() {
     // first UP
     if ( !unit_propagation() ) { return false; }
 
-    while ( var_t var = get_unassigned() ) {
+    var_t var;
+    bool pol;
+
+    while ( true ) {
+
+        std::tie( var, pol ) = get_unassigned();
+
+        if ( var == 0 ) {
+            break;
+        }
 
         decide(var, false);
         log_solver_state( "ahojky" );

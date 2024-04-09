@@ -1,8 +1,12 @@
 #include "solver_types.hpp"
 #include "logger.hpp"
 #include <fstream>
+#include <random>
 
 struct solver {
+
+    // rng with fixed seed
+    std::mt19937 rng{ 42 };
 
     logger log;
 
@@ -62,8 +66,6 @@ struct solver {
      */
     std::unordered_map< var_t, int > levels;
 
-
-
     /**
      * VARIABLE SELECTION
      */
@@ -83,7 +85,7 @@ struct solver {
     void increase_var_priority( var_t v );
 
     // select next branching variable
-    var_t get_unassigned(); 
+    std::pair< var_t, bool > get_unassigned();
 
 
 
@@ -126,6 +128,11 @@ struct solver {
     /* current decision level */
     int current_level() const {
         return decisions.size();
+    }
+
+    /* choose random polarity */
+    bool rand_pol() {
+        return rng() % 2;
     }
 
     // assigns val v to variable x, adds new decision level to _decisions_

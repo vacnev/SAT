@@ -245,15 +245,21 @@ struct evsids_heap {
 
 
 struct assignment {
+    const int period = 4 * 100;
     std::size_t vars_count;
     std::vector< lbool > asgn;
+    int decision_count = 0;
+    std::vector< lbool > last_phase;
 
-    assignment(std::size_t count) : vars_count( count ), asgn( count + 1 ) { }
+    assignment(std::size_t count) : vars_count( count ), asgn( count + 1 ), last_phase( count + 1 ) { }
 
     lbool& operator[](var_t var) {
         return asgn[var];
     }
 
+    lbool& saved_phase(var_t var) {
+        return last_phase[var];
+    }
 
     void assign( var_t var, bool v ) {
         asgn[var] = v;
