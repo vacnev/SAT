@@ -89,6 +89,31 @@ struct solver {
 
 
 
+    /* RESTARTS */
+
+    /* number of conflicts */
+    int conflicts = 0;
+
+    /* restart limit */
+    int restart_limit = 1;
+
+    /* compute next limit with Luby sequence */
+    int max_limit = 1;
+
+    void change_restart_limit() {
+        restart_limit *= 2;
+
+        if (restart_limit > max_limit) {
+            max_limit *= 2;
+            restart_limit = 1;
+        }
+    }
+
+    /* restart */
+    void restart();
+
+
+
     /**
      * CONSTRUCTORS
      */

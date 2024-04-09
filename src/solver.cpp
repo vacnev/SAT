@@ -163,6 +163,20 @@ void solver::increase_var_priority( var_t v ) {
     heap.increase_priority( v, inc );
 }
 
+void solver::restart() {
+    change_restart_limit();
+    conflicts = 0;
+    index = decisions[0] - 1;
+    decisions.clear();
+
+    for ( int k = index + 1 ; k < trail.size(); ++k ) {
+        unassign( trail[k].var() );
+    }
+
+    trail.resize( index + 1 );
+    reasons.resize( index + 1 );
+}
+
 /* iff all assigned then 0 */
 std::pair< var_t, bool > solver::get_unassigned() {
     var_t v_max = 0;
@@ -452,6 +466,12 @@ bool solver::solve() {
         while ( !unit_propagation() ) {
             if ( decisions.empty() ) {
                 return false;
+            }
+
+            ++conflicts;
+            if ( conflicts >= restart_limit ) {
+                restart();
+                break;
             }
         
             assert( conflict_idx != -1 );
