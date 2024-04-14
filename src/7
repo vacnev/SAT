@@ -183,7 +183,7 @@ void solver::restart() {
 }
 
 /* iff all assigned then 0 */
-var_t solver::get_unassigned( bool& polarity ) {
+std::pair< var_t, bool > solver::get_unassigned() {
     var_t v_max = 0;
 
     do {
@@ -191,7 +191,6 @@ var_t solver::get_unassigned( bool& polarity ) {
         log_solver_state("after extract");
     }
     while ( !asgn.var_unassigned( v_max ) );
-
 
     bool pol = false;
     lbool& saved = asgn.saved_phase(v_max);
@@ -217,8 +216,7 @@ var_t solver::get_unassigned( bool& polarity ) {
         asgn.decision_count = 0;
     }
 
-    polarity = pol;
-    return v_max;
+    return { v_max, pol };
 }
 
 
@@ -482,8 +480,7 @@ bool solver::solve() {
 
     while ( true ) {
 
-
-        var = get_unassigned( pol );
+        std::tie( var, pol ) = get_unassigned();
 
         if ( var == 0 ) {
             break;

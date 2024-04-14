@@ -33,6 +33,10 @@ struct lit_t {
         return *this;
     }
 
+    bool operator==( const lit_t &rhs ) const {
+        return lit == rhs.lit;
+    }
+
     int var() const {
         return std::abs( lit );
     }
@@ -50,17 +54,17 @@ struct lit_t {
 struct evsids_heap {
 
     /* priorities of elements in the heap */
-    std::unordered_map< var_t, double > priorities;
+    std::vector< double > priorities;
 
     /* indices of elements in the heap */
-    std::unordered_map< var_t, int > indices;
+    std::vector< int > indices;
 
     /* stores the actual max heap of variables */
     std::vector< var_t > heap;
 
     int vars_count;
 
-    evsids_heap( std::size_t count ) : vars_count( count ) {
+    evsids_heap( std::size_t count ) : vars_count( count ), indices( count + 1 ), priorities( count + 1 ) {
         for ( std::size_t i = 1; i <= count; ++i ) {
             heap.emplace_back( i );
             priorities[i] = 1.0;
@@ -117,15 +121,16 @@ struct evsids_heap {
 
         assert(valid_heap(0));
 
-        for ( auto &[v, idx] : indices ) {
+        for ( int i = 1; i < indices.size(); i++) {
+            int idx = indices[i];
             if ( idx == -1 ) {
                 for ( auto y : heap ) { 
-                    assert( y != v ); 
+                    assert( y != i ); 
                 }
             }
 
             else {
-                assert( heap[idx] == v );
+                assert( heap[idx] == i );
             }
         }
     }
@@ -202,34 +207,6 @@ struct evsids_heap {
         heapify( heap[0] );
 
         return v_max;
-    }
-
-    void remove_first_n( size_t n ) {
-        for ( int i = 0; i < n; i++ ) {
-            indices[heap[i]] = -1;
-        }
-
-        // std::cout << heap.size() << " n " << n << std::endl;
-        heap.erase( heap.begin(), std::next(heap.begin(), n) );
-        // std::cout << heap.size() << std::endl;
-
-        for ( var_t v : heap ) {
-            indices[v] -= n;
-        }
-
-        for ( size_t i = 1; i <= std::min( n + 1, heap.size() - 1 ); i++ ) {
-            propagate( heap[i] );
-        }
-
-        assert( valid_heap(0) );
-    }
-
-    void clear() {
-        for ( auto &[v, idx] : indices ) {
-            idx = -1;
-        }
-
-        heap.clear();
     }
 
     void insert( var_t v ) {
@@ -354,7 +331,7 @@ struct clause {
      *          satisfied under asgn
      **/
      
-    clause_status resolve_watched(int clause_index, lit_t lit, assignment& asgn, std::unordered_map< int, std::vector< int > >& occurs) {
+    clause_status resolve_watched(int clause_index, lit_t lit, assignment& asgn, std::unordered_map< int, std::vector< int > >& occurs, std::vector< int > &clause_indices ) {
 
         auto [l1, l2] = watched_lits();
         auto& [w1, w2] = watched;
@@ -367,7 +344,7 @@ struct clause {
 
         // try to avoid moving watch
         if ( asgn.satisfies_literal( l2 ) ) {
-            occurs[ data[w1] ].push_back( clause_index );
+            clause_indices.push_back( clause_index );
             return SATISFIED;
         }
 
@@ -392,7 +369,7 @@ struct clause {
          * w1 will stay at its current index, restore its watch
          */
 
-        occurs[ data[w1] ].push_back( clause_index );
+        clause_indices.push_back( clause_index );
 
         lit_t l = data[w2];
 

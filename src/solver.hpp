@@ -85,7 +85,7 @@ struct solver {
     void increase_var_priority( var_t v );
 
     // select next branching variable
-    std::pair< var_t, bool > get_unassigned();
+    var_t get_unassigned( bool &polarity );
 
 
 
