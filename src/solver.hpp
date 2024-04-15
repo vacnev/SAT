@@ -95,17 +95,17 @@ struct solver {
     int conflicts = 0;
 
     /* restart limit */
-    int restart_limit = 1;
+    int restart_limit = 1000;
 
     /* compute next limit with Luby sequence */
-    int max_limit = 1;
+    int max_limit = 1000;
 
     void change_restart_limit() {
         restart_limit *= 2;
 
         if (restart_limit > max_limit) {
             max_limit *= 2;
-            restart_limit = 1;
+            restart_limit = 1000;
         }
     }
 

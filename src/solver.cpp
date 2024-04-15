@@ -198,6 +198,7 @@ std::pair< var_t, bool > solver::get_unassigned() {
         switch ( asgn.decision_count % 100 ) {
             case 0:
                 pol = *saved;
+                --asgn.decision_count;
                 break;
             case 1:
                 pol = !*saved;
@@ -211,8 +212,9 @@ std::pair< var_t, bool > solver::get_unassigned() {
     }
 
     saved = pol;
+    asgn.decision_count += 2;
 
-    if ( ++asgn.decision_count >= asgn.period ) {
+    if ( asgn.decision_count >= asgn.period ) {
         asgn.decision_count = 0;
     }
 
@@ -463,7 +465,7 @@ bool solver::solve() {
             break;
         }
 
-        decide(var, false);
+        decide(var, pol);
         log_solver_state( "ahojky" );
 
         while ( !unit_propagation() ) {
