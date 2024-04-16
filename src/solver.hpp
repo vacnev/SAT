@@ -97,6 +97,9 @@ struct solver {
     /* restart limit */
     int restart_limit = 1;
 
+    /* multiplicative restart constant */
+    int restart_const = 50;
+
     /* compute next limit with Luby sequence */
     int max_limit = 1;
 

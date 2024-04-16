@@ -498,7 +498,7 @@ bool solver::solve() {
             }
 
             ++conflicts;
-            if ( conflicts >= restart_limit ) {
+            if ( conflicts >= restart_const * restart_limit ) {
                 restart();
                 break;
             }
