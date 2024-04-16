@@ -80,16 +80,14 @@ void solver::log_clause( const clause& c, const std::string &title ) {
 
 }
 
-void solver::log_solver_state( const std::string &title ) {
+void solver::log_solver_state( const std::string &title, bool all_clauses=false ) {
     if ( !log.enabled() ) return;
 
 
-    /*
-     * bad idea
-    for ( int i = 0; i < form.clause_count; i++ ) {
-        log_clause( form[i] , "Clause " + std::to_string(i) );
-    }
-    */
+    if ( all_clauses )
+        for ( int i = 0; i < form.clause_count; i++ ) {
+            log_clause( form[i] , "Clause " + std::to_string(i) );
+        }
 
     log.log() << title << "\n";
     log.log() << "\n\nEVSIDS:\n";
@@ -180,7 +178,6 @@ void solver::restart() {
     change_restart_limit();
     conflicts = 0;
     index = decisions[0];
-    max_learned *= 1.2;
     decisions.clear();
 
     for ( int k = index ; k < trail.size(); ++k ) {
@@ -189,9 +186,6 @@ void solver::restart() {
 
     trail.resize( index );
     reasons.resize( index );
-
-    if ( index > 0 )
-        --index;
 }
 
 /* iff all assigned then 0 */
@@ -502,7 +496,7 @@ std::pair< clause, int > solver::analyze_conflict() {
 
 bool solver::solve() {
 
-    // log.set_log_level( log_level::TRACE );
+    log.set_log_level( log_level::TRACE );
 
     if ( unsat ) {
         return false;
@@ -527,6 +521,7 @@ bool solver::solve() {
 
         while ( !unit_propagation() ) {
             if ( decisions.empty() ) {
+                log_solver_state( "final", true );
                 return false;
             }
 
@@ -542,6 +537,7 @@ bool solver::solve() {
             decay_var_priority();
 
             if ( level == 0 ) {
+                log_solver_state( "final", true );
                 return false;
             }
 
@@ -554,6 +550,6 @@ bool solver::solve() {
         }
     }
 
-    log_solver_state( "final" );
+    log_solver_state( "final", true );
     return true;
 };

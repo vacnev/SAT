@@ -49,9 +49,6 @@ struct solver {
     int conflict_idx = -1;
 
 
-    // max learned clauses
-    int max_learned = 500;
-
     /**
      * stores indices into _trail_ corresponding to decisions made during
      * search that can be backtracked to 
@@ -164,7 +161,7 @@ struct solver {
     std::string get_model_string();
     void output_model( const std::string &filename );
 
-    void log_solver_state( const std::string &title );
+    void log_solver_state( const std::string &title, bool all_clauses );
     void log_clause( const clause &c, const std::string &title );
 
 
