@@ -2,16 +2,25 @@
 #include <cassert>
 
 void solver::initialize_clause( const clause& cl, int clref ) {
-    auto [l1, l2] = cl.watched_lits();
+
+    lit_t l1 = cl.data[0];
+    lit_t l2 = cl.data[ ( cl.size() > 1 ) ];
+
+    // add new entry to watches if the clause was learnt
+    if ( cl.learnt ) {
+        watches.push_back( { l1, l2 } );
+    } else {
+        watches[clref] = { l1, l2 };
+    }
 
     // unit clause, setup trail for first UP
     if ( cl.status == clause::UNIT ) {
-        if ( !asgn.lit_unassigned(l2) && !asgn.satisfies_literal(l2) ) {
+        if ( !asgn.lit_unassigned(l1) && !asgn.satisfies_literal(l1) ) {
             unsat = true;
             return;
         }
 
-        assign( l2.var(), l2.pol() );
+        assign( l1.var(), l1.pol() );
         reasons.push_back( clref );
     }
 
@@ -66,21 +75,19 @@ void solver::log_clause( const clause& c, const std::string &title ) {
     }
 
     log.log() << "}";
-    auto x = c.watched_lits();
+    auto& x = watches[&c - &form[0]];
     log.log() << "Watches - " << x.first << ", " << x.second << "\n";
 
 }
 
-void solver::log_solver_state( const std::string &title ) {
+void solver::log_solver_state( const std::string &title, bool all_clauses=false ) {
     if ( !log.enabled() ) return;
 
 
-    /*
-     * bad idea
-    for ( int i = 0; i < form.clause_count; i++ ) {
-        log_clause( form[i] , "Clause " + std::to_string(i) );
-    }
-    */
+    if ( all_clauses )
+        for ( int i = 0; i < form.clause_count; i++ ) {
+            log_clause( form[i] , "Clause " + std::to_string(i) );
+        }
 
     log.log() << title << "\n";
     log.log() << "\n\nEVSIDS:\n";
@@ -88,9 +95,12 @@ void solver::log_solver_state( const std::string &title ) {
         log.log() << x << " - " << heap.priorities[x] << "\n";
     }
 
+    log.log() << "INC:" << inc << "\n";
+
     
-    for ( auto &[k, v] : heap.indices ) {
-        log.log() << "Var " << k << " has index " << v << "\n";
+    int i = 0;
+    for ( auto v : heap.indices ) {
+        log.log() << "Var " << i++ << " has index " << v << "\n";
     }
 
     log.log() << "STATE:\n\n\n";
@@ -116,7 +126,7 @@ void solver::log_solver_state( const std::string &title ) {
 
     log.log() << "LEVELS:\n";
     log.log() << "[ ";
-    for ( const auto &[k, v] : levels ) { log.log() << k << " - " << v << "; "; }
+    for ( int i = 1; i < levels.size(); ++i ) { log.log() << i << " - " << levels[i] << "; "; }
     log.log() << " ]\n\n";
 
     log.log() << "REASONS:\n";
@@ -164,6 +174,7 @@ void solver::increase_var_priority( var_t v ) {
 }
 
 void solver::restart() {
+
     change_restart_limit();
     conflicts = 0;
     index = decisions[0];
@@ -178,20 +189,18 @@ void solver::restart() {
 }
 
 /* iff all assigned then 0 */
-std::pair< var_t, bool > solver::get_unassigned() {
+var_t solver::get_unassigned( bool& polarity ) {
     var_t v_max = 0;
 
-    // FIXME: surely a better way to avoid doing this in the heap somehow - spis ne
     do {
         v_max = heap.extract_max();
-        log_solver_state("after extract");
     }
     while ( !asgn.var_unassigned( v_max ) );
+
 
     bool pol = false;
     lbool& saved = asgn.saved_phase(v_max);
     if ( saved ) {
-
         switch ( asgn.decision_count / 100 ) {
             case 0:
                 pol = *saved;
@@ -215,54 +224,122 @@ std::pair< var_t, bool > solver::get_unassigned() {
         asgn.decision_count = 0;
     }
 
-    return { v_max, pol };
+    polarity = pol;
+    return v_max;
 }
+
 
 bool solver::unit_propagation() {
 
+    // repeatedly propagate enqueued literal
     while ( index < trail.size() ) {
 
         lit_t lit = trail[index++];
+        lit.flip();
 
-        auto& clause_indices = occurs[-lit];
-        auto og_size = clause_indices.size();
+        // get indices of clauses where -lit occurs
+        auto& clause_indices = occurs[lit];
 
-        // log.log() << "UP LIT: " << lit << '\n';
+        /* track two indices 
+         * i - currently investigated index of occurs[-lit]
+         * j - index of last element that will remain in occurs[-lit]
+         *
+         * i.e. swap and move elements to avoid erasing at the end
+         */
+        int j = 0;
+        for ( int i = 0; i < clause_indices.size(); ++i ) {
 
-        for ( int curr_entry = 0; curr_entry < og_size; ++curr_entry ) {
-            int i = clause_indices[curr_entry];
-            clause& c = form[i];
+            bool swapped = false;
+            auto [l1, l2] = watches[clause_indices[i]];
+            
+            if ( lit != l1 ) {
+                l2 = l1;
+                l1 = lit;
+                swapped = true;
+            }
 
-            // log_clause(c, "UP CLAUSE ");
+            // try to avoid moving watch
+            if ( asgn.satisfies_literal( l2 ) ) {
+                clause_indices[j++] = clause_indices[i];
+                continue;
+            }
 
-            clause::clause_status status = c.resolve_watched(i, -lit, asgn, occurs);
+            clause& c = form[clause_indices[i]];
 
-            if ( status == clause::UNIT ) {
-                lit_t l = c.watched_lits().second; 
-                assign( l.var(), l.pol() );
-                reasons.push_back( i );
+            if ( swapped ) {
+                c.data[1] = c.data[0];
+                c.data[0] = lit;
+                std::swap( watches[clause_indices[i]].first, watches[clause_indices[i]].second );
+            }
 
-                // log.log() << "resovled lit: " << lit.var() << '\n';
-                // log_clause(c, "UNIT PROPAGATION ");
-                // log_solver_state("UNIT PROPAGATION ");
-                
-            } 
-            // Conflict in UP -> some clause has -lit as the last literal
-            else if ( status == clause::CONFLICT ) {
+            /*
+             * MOVE WATCH
+             */
+            
+            bool found = false;
 
-                // return clause indices that would be dropped
-                clause_indices.erase(clause_indices.begin(), std::next(clause_indices.begin(), curr_entry + 1));
+            // find unassigned literal
+            for ( std::size_t k = 2; k < c.data.size(); ++k ) {
+
+                lit_t l = c.data[k];
+
+                // get ls assignment ( nullopt / bool )
+                lbool& asgn_l = asgn[l.var()];
+
+                // handle duplicit literals, TODO: can save this by preprocessing
+                if (l == l2) {
+                    continue;
+                }
+
+                // if the literal is unassigned or satisfied
+                if ( !asgn_l || ( asgn_l == l.pol() ) ) {
+                    // w1 = k;
+                    std::swap( c.data[0], c.data[k] );
+                    watches[clause_indices[i]].first = c.data[0];
+                    occurs[l].push_back( clause_indices[i] );
+                    found = true;
+                    break;
+                }
+            }
+
+            /* found new watch, do not increment j */
+            if ( found ) {
+                continue;
+            }
+
+            /* did not find new index for w1, the watch will remain in effect
+             * swap the index entry and increment j*/
+            clause_indices[j++] = clause_indices[i];
+            // lit_t l = c.data[w2];
+
+            // if second watch is unassigned, unit prop
+            if ( asgn.lit_unassigned( l2 ) ) {
+                assign( l2.var(), l2.pol() );
+                reasons.push_back( clause_indices[i] );
+            }
+
+            /* if the second watch is unsat
+             * copy the remaining watches and analyze_conflict() 
+             */
+            else if ( !asgn.satisfies_literal( l2 ) ) {
 
                 // save index of conflict clause
-                conflict_idx = i;
+                conflict_idx = clause_indices[i++];
 
-                return false; // UNSAT
+                for ( ; i < clause_indices.size(); i++ ) {
+                    clause_indices[j++] = clause_indices[i];
+                }
+
+                clause_indices.resize(j);
+                return false;
             }
+
         }
 
-        clause_indices.erase(clause_indices.begin(), std::next(clause_indices.begin(), og_size));
-    }
+        // adjust the occurs vector after watches have been moved
+        clause_indices.resize(j);
 
+    }
     return true;
 }
 
@@ -294,16 +371,14 @@ void solver::backtrack() {
     index = trail.size() - 1;
 }
 
-
-/* invariant - learnt has two watched literals set, the second of which is the
- * UIP and the first one is the literal with second highest DL after UIP */
 void solver::backjump( int level, clause learnt ) {
 
     assert( level < decisions.size() );
 
-    // index of next decision level that is to be removed, i.e. all entries in
-    // trail after decisions[level] will be deleted. In case the _learnt_
-    // clause is unit, all decisions will be deleted;
+    /* index of next decision level that is to be removed, i.e. all entries in
+     * trail after decisions[level] will be deleted. In case if the _learnt_
+     * clause is unit, all decisions will be deleted
+     */
     int next_level = ( level > 0 ) ? decisions[level] : decisions[0];
 
     for ( int k = next_level ; k < trail.size(); ++k ) {
@@ -329,63 +404,46 @@ std::pair< clause, int > solver::analyze_conflict() {
     int ind = trail.size() - 1;
     lit_t uip = 0;
     int lits_remaining = 0;
+
     std::vector< int > reasons_learnt;
-    // clause confl = form[conflict_idx];
+
+    // stores index of currently resolved clause, starts with conflict clause
     int confl_idx = conflict_idx;
 
-    log_solver_state("conflict analysis");
-    // log_clause( confl, "conflict clause" );
-    // log.log() << std::endl;
 
+    /* repeatedly resolve away literals until first uip
+     * the seen map stores literals that are present in the final clause
+     */
     do {
 
-        // log.log() << "Index: " << ind << "\n";
-        // log.log() << "lits:" << lits_remaining << std::endl;
-        // log_clause( confl, "currently resolved clause" );
-        // if (confl.learnt)
-        //     log.log() << "LERNAT" << std::endl;
-        // log.log() << std::endl;
-        // log_solver_state("conflict analysis");
-        
         for ( lit_t& l : form[confl_idx].data ) {
 
-            if ( ( l != uip ) && levels[l.var()] > 0 && !seen[l.var()] ) {
+            var_t lvar = l.var();
+            if ( ( l != uip ) && levels[lvar] > 0 && !seen[lvar] ) {
                 seen[l.var()] = 1;
 
-                increase_var_priority( l.var() );
+                increase_var_priority( lvar );
 
-                if ( levels[l.var()] < current_level() ) {
+                if ( levels[lvar] < current_level() ) {
                     learnt_clause.push_back( l );
                     reasons_learnt.push_back( reasons[ind] );
                 }
                 else {
-                    // log.log() << "lit: " << l << " level: " << levels[l.var()] << " current level: " << current_level() << std::endl;
                     lits_remaining++;
                 }
             }
         }
 
-        // log_clause( clause( learnt_clause ), "ahoj" );
 
         // find next clause to resolve with
         while ( !seen[trail[ind].var()] ) { ind--; };
-        
-
 
         uip = trail[ind];
         seen[uip.var()] = 0;
         lits_remaining--;
 
-        // last step - this will be equal to -1
-        if ( lits_remaining > 0) {
-            
-            // if ( reasons[ind] == -1 ) {
-            //     log_solver_state("BAD SOLVER STATE");
-            // }
 
-            // confl = form[reasons[ind]];
-            confl_idx = reasons[ind];
-        }
+        confl_idx = reasons[ind];
 
     } while (lits_remaining > 0);
 
@@ -399,7 +457,7 @@ std::pair< clause, int > solver::analyze_conflict() {
             learnt_clause[j++] = learnt_clause[i];
         } else {
             clause& confl = form[reasons_learnt[i - 1]];
-            auto [l1, l2] = confl.watched_lits();
+            auto [l1, l2] = watches[reasons_learnt[i - 1]];
 
             for ( lit_t l : confl.data ) {
                 if ( l != l2 && levels[l.var()] > 0 && !seen[l.var()] ) {
@@ -435,7 +493,7 @@ std::pair< clause, int > solver::analyze_conflict() {
 
     // construct clause ( init watches to UIP & highest DL literal )
     clause learnt( std::move(learnt_clause), true );
-    
+
     return { learnt, backjump_level };
 }
 
@@ -456,7 +514,7 @@ bool solver::solve() {
 
     while ( true ) {
 
-        std::tie( var, pol ) = get_unassigned();
+        var = get_unassigned( pol );
 
         if ( var == 0 ) {
             break;
@@ -477,6 +535,7 @@ bool solver::solve() {
             }
         
             assert( conflict_idx != -1 );
+
             auto [learnt, level] = analyze_conflict();
             decay_var_priority();
 
@@ -488,11 +547,10 @@ bool solver::solve() {
                 level = 0;
             }
 
-            backjump(level, std::move( learnt ) );
+            backjump( level, std::move( learnt ) );
             log_solver_state( "after_conflict" );
         }
     }
 
-    log_solver_state( "final" );
     return true;
 };

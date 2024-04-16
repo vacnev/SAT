@@ -13,13 +13,19 @@ struct solver {
     // solved formula
     formula form;
 
+
+    // index to confl clause
+    int confl_clause;
+
+    /*
+     * a vector of watched literals in the same order as the clauses in the formula
+     */
+    std::vector< std::pair< lit_t, lit_t > > watches;
+
     /**
      * SOLVER STATE
      */
     assignment asgn;
-
-    // index to confl clause
-    int confl_clause;
 
     /**
      * signals that solver is in an unsatisfiable state before the first unit
@@ -27,8 +33,6 @@ struct solver {
      **/
     bool unsat = false;
 
-    // stores the trail (assigned literals)
-    std::vector< lit_t > trail;
 
     /**
      * stores index of first literal in _trail_ to be investigated in
@@ -36,7 +40,9 @@ struct solver {
      **/
     std::size_t index;
 
-    // current index of conflict
+    /*
+     * current index of conflict
+     */
     int conflict_idx = -1;
 
     /**
@@ -45,26 +51,31 @@ struct solver {
      */
     std::vector< int > decisions; 
 
-    /**
-     * stores reason (clause) for each literal in _trail_ 
+    /*
+     * stores the trail (assigned literals)
      */
-    std::vector< int > reasons;
+    std::vector< lit_t > trail;
 
     /* *
      * tracks watched literals accros clauses, maps literals -> indices of
      * clauses in which they are currently watched
      */
-    std::unordered_map< int, std::vector< int > > occurs;
+    lit_map occurs;
 
     /**
      * seen literals, used for resolution in CDCL
     */
-    std::unordered_map< var_t, int > seen;
+    std::vector< int > seen;
+
+    /**
+     * stores reason (clause) for each literal in _trail_ 
+     */
+    std::vector< int > reasons;
 
     /**
      * levels of variables, used for CDCL
      */
-    std::unordered_map< var_t, int > levels;
+    std::vector< int > levels;
 
     /**
      * VARIABLE SELECTION
@@ -85,7 +96,7 @@ struct solver {
     void increase_var_priority( var_t v );
 
     // select next branching variable
-    std::pair< var_t, bool > get_unassigned();
+    var_t get_unassigned( bool &polarity );
 
 
 
@@ -117,7 +128,14 @@ struct solver {
     /**
      * CONSTRUCTORS
      */
-    solver(formula _form) : form(std::move(_form)), asgn(form.var_count), heap( form.var_count ) {
+    solver(formula _form) : form(std::move(_form))
+                          , watches( form.clause_count )
+                          , asgn(form.var_count)
+                          , heap( form.var_count )
+                          , occurs( form.var_count )
+                          , seen( form.var_count + 1 )
+                          , levels( form.var_count + 1 ) 
+    {
         initialize_structures();
     }
 
@@ -141,7 +159,7 @@ struct solver {
     std::string get_model_string();
     void output_model( const std::string &filename );
 
-    void log_solver_state( const std::string &title );
+    void log_solver_state( const std::string &title, bool all_clauses );
     void log_clause( const clause &c, const std::string &title );
 
 
