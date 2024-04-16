@@ -102,13 +102,13 @@ struct evsids_heap {
         return 2 * idx + 2;
     }
 
-    void increase_priority( var_t v, float inc) {
+    void increase_priority( var_t v, double &inc ) {
         // if increased to larger val than 1e100, rescale prios/increment
         if ( ( priorities[v] += inc ) > 1e100 ) {
             for ( int i = 1; i < vars_count; i++ ) {
-                priorities[v] *= 1e-100;
-                inc *= 1e-100; 
+                priorities[i] *= 1e-100;
             }
+            inc *= 1e-100; 
         }
 
         // if the variable is present in the heap
@@ -292,26 +292,19 @@ struct clause {
     bool learnt;
     clause_status status;
 
-    // two watched lits
-    // std::pair< int, int > watched;
-
     std::vector< lit_t > data;
 
     clause(std::vector< lit_t > _data, bool _learnt = false) : learnt(_learnt), data(std::move(_data)) {
         if ( learnt ) {
             status = UNIT;
-            // watched = { ( data.size() > 1 ), 0 };
         }
         else if ( data.empty() ) {
             status = CONFLICT;
-            // watched = { 0, 0 };
         }
         else if ( data.size() == 1 ) {
             status = UNIT;
-            // watched = { 0, 0 };
         } else {
             status = UNDETERMINED;
-            // watched = { 0 , 1 };
 
             // UNIT cuz only 1 literal
             lit_t l = data[0];
@@ -328,87 +321,6 @@ struct clause {
     auto size() const {
         return data.size();
     }
-
-    // std::pair< lit_t, lit_t > watched_lits() const {
-    //     return { data[watched.first], data[watched.second] };
-    // }
-
-
-    /** input condition:
-     *      clause watched store indices of two unassigned literals
-     *      (or one which is true)
-     *          
-     *      only called after literal l is assigned either through decide() or
-     *      unit_propagation(), with arg lit equal to -l. 
-     *
-     *      only called on clauses where -l is one of the watched literals, i.e. clause is present
-     *      in occurs[-l].
-     *
-     *      returns status signal:
-     *          UNIT if unit propagation is needed for this clause, with the
-     *          unit propped literal stored as the second entry of
-     *          watched_lits()
-     *
-     *          CONFLICT - self explanatory
-     *          UNDETERMINED - if nothing else needs to be done
-     *          SATISFIED - if one of the watched literals is currently
-     *          satisfied under asgn
-     **/
-     
-    // clause_status resolve_watched(int clause_index, lit_t lit, assignment& asgn, std::unordered_map< int, std::vector< int > >& occurs, std::vector< int > &clause_indices ) {
-
-    //     auto [l1, l2] = watched_lits();
-    //     auto& [w1, w2] = watched;
-        
-    //     if (lit != l1) {
-    //         using std::swap;
-    //         swap( w1, w2 );
-    //         swap( l1, l2 );
-    //     }
-
-    //     // try to avoid moving watch
-    //     if ( asgn.satisfies_literal( l2 ) ) {
-    //         clause_indices.push_back( clause_index );
-    //         return SATISFIED;
-    //     }
-
-    //     // find unassigned literal
-    //     for ( std::size_t i = 0; i < data.size(); ++i ) {
-    //         lit_t l = data[i];
-
-    //         if (l == l1 || l == l2) {
-    //             continue;
-    //         }
-
-    //         // sat lit => SATISFIED
-    //         if ( asgn.lit_unassigned( l ) || asgn.satisfies_literal( l ) ) {
-    //             w1 = i;
-    //             occurs[l].push_back( clause_index );
-    //             return UNDETERMINED;
-    //         }
-    //     }
-
-    //     /*
-    //      * did not find new index for w1
-    //      * w1 will stay at its current index, restore its watch
-    //      */
-
-    //     clause_indices.push_back( clause_index );
-
-    //     lit_t l = data[w2];
-
-    //     // if second watch is unassigned, unit prop
-    //     if ( asgn.lit_unassigned( l ) ) {
-    //         return UNIT;
-    //     }
-
-    //     // if the second watch is unsat, return conflict
-    //     else if ( !asgn.satisfies_literal( l ) ) {
-    //         return CONFLICT;
-    //     }
-        
-    //     return SATISFIED;
-    // }
 };
 
 struct formula {

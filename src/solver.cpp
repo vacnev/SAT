@@ -2,10 +2,11 @@
 #include <cassert>
 
 void solver::initialize_clause( const clause& cl, int clref ) {
-    // auto [l1, l2] = cl.watched_lits();
+
     lit_t l1 = cl.data[0];
     lit_t l2 = cl.data[ ( cl.size() > 1 ) ];
 
+    // add new entry to watches if the clause was learnt
     if ( cl.learnt ) {
         watches.push_back( { l1, l2 } );
     } else {
@@ -96,6 +97,8 @@ void solver::log_solver_state( const std::string &title ) {
         log.log() << x << " - " << heap.priorities[x] << "\n";
     }
 
+    log.log() << "INC:" << inc << "\n";
+
     
     int i = 0;
     for ( auto v : heap.indices ) {
@@ -177,6 +180,7 @@ void solver::restart() {
     change_restart_limit();
     conflicts = 0;
     index = decisions[0];
+    max_learned *= 1.2;
     decisions.clear();
 
     for ( int k = index ; k < trail.size(); ++k ) {
@@ -196,7 +200,6 @@ var_t solver::get_unassigned( bool& polarity ) {
 
     do {
         v_max = heap.extract_max();
-        log_solver_state("after extract");
     }
     while ( !asgn.var_unassigned( v_max ) );
 
@@ -204,7 +207,7 @@ var_t solver::get_unassigned( bool& polarity ) {
     bool pol = false;
     lbool& saved = asgn.saved_phase(v_max);
     if ( saved ) {
-        switch ( asgn.decision_count % 100 ) {
+        switch ( asgn.decision_count / 100 ) {
             case 0:
                 pol = *saved;
                 break;
@@ -250,25 +253,14 @@ bool solver::unit_propagation() {
         int j = 0;
         for ( int i = 0; i < clause_indices.size(); ++i ) {
 
-            // clause& c = form[clause_indices[i]];
-
             bool swapped = false;
             auto [l1, l2] = watches[clause_indices[i]];
             
-            // make sure -lit is the first watch
-            // if (lit != c.data[w1]) {
-            //     using std::swap;
-            //     swap( w1, w2 );
-            // }
-
             if ( lit != l1 ) {
-                std::swap( l1, l2 );
+                l2 = l1;
+                l1 = lit;
                 swapped = true;
             }
-
-            // get the two watches
-            // lit_t l1 = c.data[w1];
-            // lit_t l2 = c.data[w2];
 
             // try to avoid moving watch
             if ( asgn.satisfies_literal( l2 ) ) {
@@ -279,7 +271,8 @@ bool solver::unit_propagation() {
             clause& c = form[clause_indices[i]];
 
             if ( swapped ) {
-                std::swap( c.data[0], c.data[1] );
+                c.data[1] = c.data[0];
+                c.data[0] = lit;
                 std::swap( watches[clause_indices[i]].first, watches[clause_indices[i]].second );
             }
 
@@ -290,7 +283,7 @@ bool solver::unit_propagation() {
             bool found = false;
 
             // find unassigned literal
-            for ( std::size_t k = 0; k < c.data.size(); ++k ) {
+            for ( std::size_t k = 2; k < c.data.size(); ++k ) {
 
                 lit_t l = c.data[k];
 
@@ -400,8 +393,6 @@ std::pair< clause, int > solver::analyze_conflict() {
     // stores index of currently resolved clause, starts with conflict clause
     int confl_idx = conflict_idx;
 
-    log_solver_state("conflict analysis");
-
 
     /* repeatedly resolve away literals until first uip
      * the seen map stores literals that are present in the final clause
@@ -491,7 +482,7 @@ std::pair< clause, int > solver::analyze_conflict() {
 
 bool solver::solve() {
 
-    // log.set_log_level( log_level::TRACE );
+    log.set_log_level( log_level::TRACE );
 
     if ( unsat ) {
         return false;
@@ -504,7 +495,6 @@ bool solver::solve() {
     bool pol;
 
     while ( true ) {
-
 
         var = get_unassigned( pol );
 
@@ -527,6 +517,7 @@ bool solver::solve() {
             }
         
             assert( conflict_idx != -1 );
+
             auto [learnt, level] = analyze_conflict();
             decay_var_priority();
 

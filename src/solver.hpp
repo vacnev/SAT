@@ -21,6 +21,9 @@ struct solver {
     // index to confl clause
     int confl_clause;
 
+    /*
+     * a vector of watched literals in the same order as the clauses in the formula
+     */
     std::vector< std::pair< lit_t, lit_t > > watches;
 
     /**
@@ -29,7 +32,9 @@ struct solver {
      **/
     bool unsat = false;
 
-    // stores the trail (assigned literals)
+    /*
+     * stores the trail (assigned literals)
+     */
     std::vector< lit_t > trail;
 
     /**
@@ -38,8 +43,14 @@ struct solver {
      **/
     std::size_t index;
 
-    // current index of conflict
+    /*
+     * current index of conflict
+     */
     int conflict_idx = -1;
+
+
+    // max learned clauses
+    int max_learned = 500;
 
     /**
      * stores indices into _trail_ corresponding to decisions made during
@@ -100,7 +111,7 @@ struct solver {
     int restart_limit = 1;
 
     /* multiplicative restart constant */
-    int restart_const = 50;
+    int restart_const = 1000;
 
     /* compute next limit with Luby sequence */
     int max_limit = 1;
@@ -122,8 +133,14 @@ struct solver {
     /**
      * CONSTRUCTORS
      */
-    solver(formula _form) : form(std::move(_form)), watches( form.clause_count ), asgn(form.var_count), heap( form.var_count ),
-     occurs( form.var_count ), seen( form.var_count + 1 ), levels( form.var_count + 1 ) {
+    solver(formula _form) : form(std::move(_form))
+                          , watches( form.clause_count )
+                          , asgn(form.var_count)
+                          , heap( form.var_count )
+                          , occurs( form.var_count )
+                          , seen( form.var_count + 1 )
+                          , levels( form.var_count + 1 ) 
+    {
         initialize_structures();
     }
 
