@@ -175,9 +175,6 @@ void solver::restart() {
 
     trail.resize( index );
     reasons.resize( index );
-
-    if ( index > 0 )
-        --index;
 }
 
 /* iff all assigned then 0 */
@@ -195,7 +192,7 @@ std::pair< var_t, bool > solver::get_unassigned() {
     lbool& saved = asgn.saved_phase(v_max);
     if ( saved ) {
 
-        switch ( asgn.decision_count % 100 ) {
+        switch ( asgn.decision_count / 100 ) {
             case 0:
                 pol = *saved;
                 --asgn.decision_count;
