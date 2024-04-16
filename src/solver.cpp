@@ -284,7 +284,7 @@ bool solver::unit_propagation() {
                 // get ls assignment ( nullopt / bool )
                 lbool& asgn_l = asgn[l.var()];
 
-                if (l == l1 || l == l2) {
+                if (l == l2) {
                     continue;
                 }
 
@@ -304,8 +304,8 @@ bool solver::unit_propagation() {
                 continue;
             }
 
-             /* did not find new index for w1, the watch will remain in effect
-              * swap the index entry and increment j*/
+            /* did not find new index for w1, the watch will remain in effect
+             * swap the index entry and increment j*/
             clause_indices[j++] = clause_indices[i];
             // lit_t l = c.data[w2];
 
@@ -433,12 +433,12 @@ std::pair< clause, int > solver::analyze_conflict() {
 
         // find next clause to resolve with
         while ( !seen[trail[ind].var()] ) { ind--; };
-        
+
         uip = trail[ind];
         seen[uip.var()] = 0;
         lits_remaining--;
 
-    
+
         confl_idx = reasons[ind];
 
     } while (lits_remaining > 0);
@@ -489,14 +489,14 @@ std::pair< clause, int > solver::analyze_conflict() {
 
     // construct clause ( init watches to UIP & highest DL literal )
     clause learnt( std::move(learnt_clause), true );
-    
+
     return { learnt, backjump_level };
 }
 
 
 bool solver::solve() {
 
-    log.set_log_level( log_level::TRACE );
+    // log.set_log_level( log_level::TRACE );
 
     if ( unsat ) {
         return false;

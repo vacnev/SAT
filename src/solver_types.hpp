@@ -105,7 +105,7 @@ struct evsids_heap {
     void increase_priority( var_t v, double &inc ) {
         // if increased to larger val than 1e100, rescale prios/increment
         if ( ( priorities[v] += inc ) > 1e100 ) {
-            for ( int i = 1; i < vars_count; i++ ) {
+            for ( int i = 1; i <= vars_count; i++ ) {
                 priorities[i] *= 1e-100;
             }
             inc *= 1e-100; 
@@ -270,12 +270,9 @@ struct assignment {
     // input condition: only called on literals that are assigned
     // returns whether this literal is satisfied by assignment
     bool satisfies_literal( lit_t lit ) {
-        if ( lit_unassigned( lit ) )
-            return false;
+        lbool& asgn_l = asgn[lit.var()];
 
-        // ( lit > 0 ) true iff positive literal
-        // asgn[ ... ] true iff variable is assigned true
-        return asgn[ lit.var() ] == lit.pol();
+        return asgn_l && asgn_l == lit.pol();
     }
 
 };

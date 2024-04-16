@@ -13,10 +13,6 @@ struct solver {
     // solved formula
     formula form;
 
-    /**
-     * SOLVER STATE
-     */
-    assignment asgn;
 
     // index to confl clause
     int confl_clause;
@@ -25,6 +21,11 @@ struct solver {
      * a vector of watched literals in the same order as the clauses in the formula
      */
     std::vector< std::pair< lit_t, lit_t > > watches;
+
+    /**
+     * SOLVER STATE
+     */
+    assignment asgn;
 
     /**
      * signals that solver is in an unsatisfiable state before the first unit
