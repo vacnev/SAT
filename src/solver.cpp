@@ -250,7 +250,8 @@ bool solver::unit_propagation() {
         for ( int i = 0; i < clause_indices.size(); ++i ) {
 
             bool swapped = false;
-            auto [l1, l2] = watches[clause_indices[i]];
+            int clause_idx = clause_indices[i];
+            auto [l1, l2] = watches[clause_idx];
             
             if ( lit != l1 ) {
                 l2 = l1;
@@ -260,16 +261,16 @@ bool solver::unit_propagation() {
 
             // try to avoid moving watch
             if ( asgn.satisfies_literal( l2 ) ) {
-                clause_indices[j++] = clause_indices[i];
+                clause_indices[j++] = clause_idx;
                 continue;
             }
 
-            clause& c = form[clause_indices[i]];
+            clause& c = form[clause_idx];
 
             if ( swapped ) {
                 c.data[1] = c.data[0];
                 c.data[0] = lit;
-                std::swap( watches[clause_indices[i]].first, watches[clause_indices[i]].second );
+                std::swap( watches[clause_idx].first, watches[clause_idx].second );
             }
 
             /*
@@ -286,7 +287,7 @@ bool solver::unit_propagation() {
                 // get ls assignment ( nullopt / bool )
                 lbool& asgn_l = asgn[l.var()];
 
-                // handle duplicit literals, TODO: can save this by preprocessing
+                // handle duplicit snd watch, TODO: can save this by preprocessing
                 if (l == l2) {
                     continue;
                 }
@@ -295,8 +296,8 @@ bool solver::unit_propagation() {
                 if ( !asgn_l || ( asgn_l == l.pol() ) ) {
                     // w1 = k;
                     std::swap( c.data[0], c.data[k] );
-                    watches[clause_indices[i]].first = c.data[0];
-                    occurs[l].push_back( clause_indices[i] );
+                    watches[clause_idx].first = c.data[0];
+                    occurs[l].push_back( clause_idx );
                     found = true;
                     break;
                 }
@@ -309,13 +310,13 @@ bool solver::unit_propagation() {
 
             /* did not find new index for w1, the watch will remain in effect
              * swap the index entry and increment j*/
-            clause_indices[j++] = clause_indices[i];
+            clause_indices[j++] = clause_idx;
             // lit_t l = c.data[w2];
 
             // if second watch is unassigned, unit prop
             if ( asgn.lit_unassigned( l2 ) ) {
                 assign( l2.var(), l2.pol() );
-                reasons.push_back( clause_indices[i] );
+                reasons.push_back( clause_idx );
             }
 
             /* if the second watch is unsat
@@ -324,7 +325,8 @@ bool solver::unit_propagation() {
             else if ( !asgn.satisfies_literal( l2 ) ) {
 
                 // save index of conflict clause
-                conflict_idx = clause_indices[i++];
+                conflict_idx = clause_idx;
+                i++;
 
                 for ( ; i < clause_indices.size(); i++ ) {
                     clause_indices[j++] = clause_indices[i];
@@ -349,26 +351,6 @@ void solver::add_base_clause(clause c) {
 
 void solver::add_learnt_clause(clause c) {
     form.add_learnt_clause(std::move(c));
-}
-
-void solver::backtrack() {
-    for ( std::size_t i = decisions.back() + 1; i < trail.size(); ++i ) {
-        unassign( trail[i].var() );
-    }
-
-    // decisions.back() contains idx to trail of last decision
-    // adjust trail accordingly
-    trail.resize( decisions.back() + 1 );
-    reasons.resize( decisions.back() + 1 );
-    decisions.pop_back();
-
-    // set literal to negation, fix assignment
-    trail.back().flip();
-    var_t var = trail.back().var();
-    asgn[var] = 1 - *asgn[var];
-
-    // set head of propagation queue to last
-    index = trail.size() - 1;
 }
 
 void solver::backjump( int level, clause learnt ) {
