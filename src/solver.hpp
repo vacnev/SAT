@@ -21,6 +21,8 @@ struct solver {
     // index to confl clause
     int confl_clause;
 
+    std::vector< std::pair< lit_t, lit_t > > watches;
+
     /**
      * signals that solver is in an unsatisfiable state before the first unit
      * propagation, (contradictory unit clauses / empty clause)
@@ -54,17 +56,17 @@ struct solver {
      * tracks watched literals accros clauses, maps literals -> indices of
      * clauses in which they are currently watched
      */
-    std::unordered_map< int, std::vector< int > > occurs;
+    lit_map occurs;
 
     /**
      * seen literals, used for resolution in CDCL
     */
-    std::unordered_map< var_t, int > seen;
+    std::vector< int > seen;
 
     /**
      * levels of variables, used for CDCL
      */
-    std::unordered_map< var_t, int > levels;
+    std::vector< int > levels;
 
     /**
      * VARIABLE SELECTION
@@ -120,7 +122,8 @@ struct solver {
     /**
      * CONSTRUCTORS
      */
-    solver(formula _form) : form(std::move(_form)), asgn(form.var_count), heap( form.var_count ) {
+    solver(formula _form) : form(std::move(_form)), watches( form.clause_count ), asgn(form.var_count), heap( form.var_count ),
+     occurs( form.var_count ), seen( form.var_count + 1 ), levels( form.var_count + 1 ) {
         initialize_structures();
     }
 

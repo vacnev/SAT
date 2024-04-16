@@ -18,7 +18,7 @@ using lbool = std::optional< bool >;
 struct lit_t {
     int lit;
 
-    lit_t() : lit(0) { std::cout << "WARNING: default lit constr called\n"; };
+    lit_t() : lit(0) { /*std::cout << "WARNING: default lit constr called\n";*/ };
 
     lit_t(std::convertible_to< int > auto&& l) {
         lit = l;
@@ -37,16 +37,30 @@ struct lit_t {
         return lit == rhs.lit;
     }
 
-    int var() const {
+    inline int var() const {
         return std::abs( lit );
     }
 
-    bool pol() const {
+    inline bool pol() const {
         return lit > 0;
     }
 
-    void flip() {
+    inline void flip() {
         lit *= -1;
+    }
+};
+
+
+/* occurs struct */
+struct lit_map {
+    std::vector< std::vector< int > > data;
+    int var_count;
+
+    lit_map( int count ) : data( 2 * count + 1 ), var_count( count ) {}
+
+    std::vector< int >& operator[]( lit_t l ) {
+        int index = ( l.pol() ) ? l.var() : l.var() + var_count;
+        return data[index];
     }
 };
 
@@ -279,25 +293,35 @@ struct clause {
     clause_status status;
 
     // two watched lits
-    std::pair< int, int > watched;
+    // std::pair< int, int > watched;
 
     std::vector< lit_t > data;
 
     clause(std::vector< lit_t > _data, bool _learnt = false) : learnt(_learnt), data(std::move(_data)) {
         if ( learnt ) {
             status = UNIT;
-            watched = { ( data.size() > 1 ), 0 };
+            // watched = { ( data.size() > 1 ), 0 };
         }
         else if ( data.empty() ) {
             status = CONFLICT;
-            watched = { 0, 0 };
+            // watched = { 0, 0 };
         }
         else if ( data.size() == 1 ) {
             status = UNIT;
-            watched = { 0, 0 };
+            // watched = { 0, 0 };
         } else {
             status = UNDETERMINED;
-            watched = { 0 , 1 };
+            // watched = { 0 , 1 };
+
+            // UNIT cuz only 1 literal
+            lit_t l = data[0];
+            for ( lit_t lit : data ) {
+                if ( l != lit ) {
+                    return;
+                }
+            }
+
+            status = UNIT;
         }
     }
 
@@ -305,9 +329,9 @@ struct clause {
         return data.size();
     }
 
-    std::pair< lit_t, lit_t > watched_lits() const {
-        return { data[watched.first], data[watched.second] };
-    }
+    // std::pair< lit_t, lit_t > watched_lits() const {
+    //     return { data[watched.first], data[watched.second] };
+    // }
 
 
     /** input condition:
@@ -331,60 +355,60 @@ struct clause {
      *          satisfied under asgn
      **/
      
-    clause_status resolve_watched(int clause_index, lit_t lit, assignment& asgn, std::unordered_map< int, std::vector< int > >& occurs, std::vector< int > &clause_indices ) {
+    // clause_status resolve_watched(int clause_index, lit_t lit, assignment& asgn, std::unordered_map< int, std::vector< int > >& occurs, std::vector< int > &clause_indices ) {
 
-        auto [l1, l2] = watched_lits();
-        auto& [w1, w2] = watched;
+    //     auto [l1, l2] = watched_lits();
+    //     auto& [w1, w2] = watched;
         
-        if (lit != l1) {
-            using std::swap;
-            swap( w1, w2 );
-            swap( l1, l2 );
-        }
+    //     if (lit != l1) {
+    //         using std::swap;
+    //         swap( w1, w2 );
+    //         swap( l1, l2 );
+    //     }
 
-        // try to avoid moving watch
-        if ( asgn.satisfies_literal( l2 ) ) {
-            clause_indices.push_back( clause_index );
-            return SATISFIED;
-        }
+    //     // try to avoid moving watch
+    //     if ( asgn.satisfies_literal( l2 ) ) {
+    //         clause_indices.push_back( clause_index );
+    //         return SATISFIED;
+    //     }
 
-        // find unassigned literal
-        for ( std::size_t i = 0; i < data.size(); ++i ) {
-            lit_t l = data[i];
+    //     // find unassigned literal
+    //     for ( std::size_t i = 0; i < data.size(); ++i ) {
+    //         lit_t l = data[i];
 
-            if (l == l1 || l == l2) {
-                continue;
-            }
+    //         if (l == l1 || l == l2) {
+    //             continue;
+    //         }
 
-            // sat lit => SATISFIED
-            if ( asgn.lit_unassigned( l ) || asgn.satisfies_literal( l ) ) {
-                w1 = i;
-                occurs[l].push_back( clause_index );
-                return UNDETERMINED;
-            }
-        }
+    //         // sat lit => SATISFIED
+    //         if ( asgn.lit_unassigned( l ) || asgn.satisfies_literal( l ) ) {
+    //             w1 = i;
+    //             occurs[l].push_back( clause_index );
+    //             return UNDETERMINED;
+    //         }
+    //     }
 
-        /*
-         * did not find new index for w1
-         * w1 will stay at its current index, restore its watch
-         */
+    //     /*
+    //      * did not find new index for w1
+    //      * w1 will stay at its current index, restore its watch
+    //      */
 
-        clause_indices.push_back( clause_index );
+    //     clause_indices.push_back( clause_index );
 
-        lit_t l = data[w2];
+    //     lit_t l = data[w2];
 
-        // if second watch is unassigned, unit prop
-        if ( asgn.lit_unassigned( l ) ) {
-            return UNIT;
-        }
+    //     // if second watch is unassigned, unit prop
+    //     if ( asgn.lit_unassigned( l ) ) {
+    //         return UNIT;
+    //     }
 
-        // if the second watch is unsat, return conflict
-        else if ( !asgn.satisfies_literal( l ) ) {
-            return CONFLICT;
-        }
+    //     // if the second watch is unsat, return conflict
+    //     else if ( !asgn.satisfies_literal( l ) ) {
+    //         return CONFLICT;
+    //     }
         
-        return SATISFIED;
-    }
+    //     return SATISFIED;
+    // }
 };
 
 struct formula {

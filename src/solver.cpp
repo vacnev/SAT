@@ -2,16 +2,24 @@
 #include <cassert>
 
 void solver::initialize_clause( const clause& cl, int clref ) {
-    auto [l1, l2] = cl.watched_lits();
+    // auto [l1, l2] = cl.watched_lits();
+    lit_t l1 = cl.data[0];
+    lit_t l2 = cl.data[ ( cl.size() > 1 ) ];
+
+    if ( cl.learnt ) {
+        watches.push_back( { l1, l2 } );
+    } else {
+        watches[clref] = { l1, l2 };
+    }
 
     // unit clause, setup trail for first UP
     if ( cl.status == clause::UNIT ) {
-        if ( !asgn.lit_unassigned(l2) && !asgn.satisfies_literal(l2) ) {
+        if ( !asgn.lit_unassigned(l1) && !asgn.satisfies_literal(l1) ) {
             unsat = true;
             return;
         }
 
-        assign( l2.var(), l2.pol() );
+        assign( l1.var(), l1.pol() );
         reasons.push_back( clref );
     }
 
@@ -66,7 +74,7 @@ void solver::log_clause( const clause& c, const std::string &title ) {
     }
 
     log.log() << "}";
-    auto x = c.watched_lits();
+    auto& x = watches[&c - &form[0]];
     log.log() << "Watches - " << x.first << ", " << x.second << "\n";
 
 }
@@ -117,7 +125,7 @@ void solver::log_solver_state( const std::string &title ) {
 
     log.log() << "LEVELS:\n";
     log.log() << "[ ";
-    for ( const auto &[k, v] : levels ) { log.log() << k << " - " << v << "; "; }
+    for ( int i = 1; i < levels.size(); ++i ) { log.log() << i << " - " << levels[i] << "; "; }
     log.log() << " ]\n\n";
 
     log.log() << "REASONS:\n";
@@ -242,24 +250,37 @@ bool solver::unit_propagation() {
         int j = 0;
         for ( int i = 0; i < clause_indices.size(); ++i ) {
 
-            clause& c = form[clause_indices[i]];
+            // clause& c = form[clause_indices[i]];
 
-            auto& [w1, w2] = c.watched;
+            bool swapped = false;
+            auto [l1, l2] = watches[clause_indices[i]];
             
             // make sure -lit is the first watch
-            if (lit != c.data[w1]) {
-                using std::swap;
-                swap( w1, w2 );
+            // if (lit != c.data[w1]) {
+            //     using std::swap;
+            //     swap( w1, w2 );
+            // }
+
+            if ( lit != l1 ) {
+                std::swap( l1, l2 );
+                swapped = true;
             }
 
             // get the two watches
-            lit_t l1 = c.data[w1];
-            lit_t l2 = c.data[w2];
+            // lit_t l1 = c.data[w1];
+            // lit_t l2 = c.data[w2];
 
             // try to avoid moving watch
             if ( asgn.satisfies_literal( l2 ) ) {
                 clause_indices[j++] = clause_indices[i];
                 continue;
+            }
+
+            clause& c = form[clause_indices[i]];
+
+            if ( swapped ) {
+                std::swap( c.data[0], c.data[1] );
+                std::swap( watches[clause_indices[i]].first, watches[clause_indices[i]].second );
             }
 
             /*
@@ -282,7 +303,9 @@ bool solver::unit_propagation() {
 
                 // if the literal is unassigned or satisfied
                 if ( !asgn_l || ( asgn_l == l.pol() ) ) {
-                    w1 = k;
+                    // w1 = k;
+                    std::swap( c.data[0], c.data[k] );
+                    watches[clause_indices[i]].first = c.data[0];
                     occurs[l].push_back( clause_indices[i] );
                     found = true;
                     break;
@@ -297,18 +320,18 @@ bool solver::unit_propagation() {
              /* did not find new index for w1, the watch will remain in effect
               * swap the index entry and increment j*/
             clause_indices[j++] = clause_indices[i];
-            lit_t l = c.data[w2];
+            // lit_t l = c.data[w2];
 
             // if second watch is unassigned, unit prop
-            if ( asgn.lit_unassigned( l ) ) {
-                assign( l.var(), l.pol() );
+            if ( asgn.lit_unassigned( l2 ) ) {
+                assign( l2.var(), l2.pol() );
                 reasons.push_back( clause_indices[i] );
             }
 
             /* if the second watch is unsat
              * copy the remaining watches and analyze_conflict() 
              */
-            else if ( !asgn.satisfies_literal( l ) ) {
+            else if ( !asgn.satisfies_literal( l2 ) ) {
 
                 // save index of conflict clause
                 conflict_idx = clause_indices[i++];
@@ -425,7 +448,7 @@ std::pair< clause, int > solver::analyze_conflict() {
             learnt_clause[j++] = learnt_clause[i];
         } else {
             clause& confl = form[reasons_learnt[i - 1]];
-            auto [l1, l2] = confl.watched_lits();
+            auto [l1, l2] = watches[reasons_learnt[i - 1]];
 
             for ( lit_t l : confl.data ) {
                 if ( l != l2 && levels[l.var()] > 0 && !seen[l.var()] ) {
