@@ -354,6 +354,26 @@ void solver::add_learnt_clause(clause c) {
     form.add_learnt_clause(std::move(c));
 }
 
+void solver::backtrack() {
+    for ( std::size_t i = decisions.back() + 1; i < trail.size(); ++i ) {
+        unassign( trail[i].var() );
+    }
+
+    // decisions.back() contains idx to trail of last decision
+    // adjust trail accordingly
+    trail.resize( decisions.back() + 1 );
+    reasons.resize( decisions.back() + 1 );
+    decisions.pop_back();
+
+    // set literal to negation, fix assignment
+    trail.back().flip();
+    var_t var = trail.back().var();
+    asgn[var] = 1 - *asgn[var];
+
+    // set head of propagation queue to last
+    index = trail.size() - 1;
+}
+
 void solver::backjump( int level, clause learnt ) {
 
     assert( level < decisions.size() );
@@ -482,7 +502,7 @@ std::pair< clause, int > solver::analyze_conflict() {
 
 bool solver::solve() {
 
-    log.set_log_level( log_level::TRACE );
+    // log.set_log_level( log_level::TRACE );
 
     if ( unsat ) {
         return false;
