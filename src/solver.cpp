@@ -199,7 +199,7 @@ var_t solver::get_unassigned( bool& polarity ) {
 
 
     bool pol = false;
-    lbool& saved = asgn.saved_phase(v_max);
+    lbool saved = asgn.saved_phase(v_max);
     if ( saved ) {
         switch ( asgn.decision_count / 100 ) {
             case 0:
@@ -217,7 +217,6 @@ var_t solver::get_unassigned( bool& polarity ) {
         }
     }
 
-    saved = pol;
     asgn.decision_count += 2;
 
     if ( asgn.decision_count >= asgn.period ) {
