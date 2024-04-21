@@ -127,7 +127,7 @@ struct solver {
     /* FORGETTING CLAUSES */
 
     /* local forgetting period */
-    int forget_period = 15000;
+    int forget_period = 30000;
 
     /* mid demotion check period */
     int demote_period = 10000;
@@ -144,6 +144,7 @@ struct solver {
         if ( conflicts % demote_period == 0 ) {
             form.demote_clauses( conflict_ctr, demote_period );
         } else if ( conflict_ctr % forget_period == 0 ) {
+            forget_period = 15000;
             form.forget_clauses( conflict_idx );
         }
     }
