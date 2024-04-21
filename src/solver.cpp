@@ -7,7 +7,7 @@ void solver::initialize_clause( clause& cl, int clref ) {
     lit_t l2 = cl.data[ ( cl.size() > 1 ) ];
 
     // add new entry to watches if the clause was learnt
-    if ( cl.learnt ) {
+    if ( clref >= watches.size() ) {
         watches.push_back( { l1, l2 } );
     } else {
         watches[clref] = { l1, l2 };
@@ -67,7 +67,7 @@ void solver::output_model( const std::string &filename ) {
     out << str;
 }
 
-void solver::log_clause( const clause& c, const std::string &title ) {
+void solver::log_clause( const clause& c, const std::string &title, auto idx ) {
     if ( !log.enabled() ) return;
     
     log.log() << "   " << title << " clause - {";
@@ -76,7 +76,7 @@ void solver::log_clause( const clause& c, const std::string &title ) {
     }
 
     log.log() << "}";
-    auto& x = watches[&c - &form[0]];
+    auto& x = watches[idx];
     log.log() << "Watches - " << x.first << ", " << x.second << "\n";
 
 }
@@ -87,7 +87,7 @@ void solver::log_solver_state( const std::string &title, bool all_clauses=false 
 
     if ( all_clauses )
         for ( int i = 0; i < form.clause_count; i++ ) {
-            log_clause( form[i] , "Clause " + std::to_string(i) );
+            log_clause( form[i] , "Clause " + std::to_string(i), i );
         }
 
     log.log() << title << "\n";
@@ -183,7 +183,9 @@ void solver::restart() {
 
     for ( int k = index ; k < trail.size(); ++k ) {
         unassign( trail[k].var() );
-        form[reasons[k]].reason_index = -1;
+
+        if ( reasons[k] != -1 )
+            form[reasons[k]].reason_index = -1;
     }
 
     trail.resize( index );
@@ -249,6 +251,10 @@ bool solver::unit_propagation() {
          */
         int j = 0;
         for ( int i = 0; i < clause_indices.size(); ++i ) {
+
+            if ( !form.is_valid_clause( clause_indices[i] ) ) {
+                continue;
+            }
 
             bool swapped = false;
             int clause_idx = clause_indices[i];
@@ -351,8 +357,8 @@ void solver::add_base_clause(clause c) {
     form.add_base_clause(std::move(c));
 }
 
-void solver::add_learnt_clause(clause c) {
-    form.add_learnt_clause(std::move(c));
+void solver::add_learnt_clause(clause c, size_t clref) {
+    form.add_learnt_clause(std::move(c), clref);
 }
 
 void solver::backjump( int level, clause learnt ) {
@@ -367,7 +373,9 @@ void solver::backjump( int level, clause learnt ) {
 
     for ( int k = next_level ; k < trail.size(); ++k ) {
         unassign( trail[k].var() );
-        form[reasons[k]].reason_index = -1;
+
+        if ( reasons[k] != -1 )
+            form[reasons[k]].reason_index = -1;
     }
 
     // adjust trail accordingly
@@ -376,14 +384,15 @@ void solver::backjump( int level, clause learnt ) {
     reasons.resize( next_level );
 
     // unit propagate learnt clause
-    initialize_clause( learnt, form.size() );
-    add_learnt_clause( std::move( learnt ) ) ;
+    auto clref = form.next_index();
+    initialize_clause( learnt, clref );
+    add_learnt_clause( std::move( learnt ), clref ) ;
 
     // set head of propagation queue to last
     index = trail.size() - 1;
 }
 
-int compute_lbd( const std::vector< lit_t > &lits ) {
+int solver::compute_lbd( const std::vector< lit_t > &lits ) {
     std::unordered_set< int > lvl_set;
     for ( lit_t l : lits ) {
         lvl_set.insert( l.var() );
@@ -404,11 +413,18 @@ std::pair< clause, int > solver::analyze_conflict() {
     // stores index of currently resolved clause, starts with conflict clause
     int confl_idx = conflict_idx;
 
+    // std::cout << "before resolve\n";
 
     /* repeatedly resolve away literals until first uip
      * the seen map stores literals that are present in the final clause
      */
     do {
+        // std::cout << "before form.inc_activity " << confl_idx << "\n";
+        // log_clause( form[confl_idx], "conflict", confl_idx );
+        form.inc_activity( confl_idx );
+
+        // std::cout << "resolving\n";
+
         for ( lit_t& l : form[confl_idx].data ) {
 
             var_t lvar = l.var();
@@ -427,21 +443,30 @@ std::pair< clause, int > solver::analyze_conflict() {
             }
         }
 
+        // std::cout << "after resolving\n";
+
         int new_lbd = compute_lbd( form[confl_idx].data );
         form[confl_idx].last_conflict = conflict_ctr;
-        form.learnt.update_lbd( form[confl_idx], confl_idx - form.base.size(), new_lbd );
+        form[confl_idx].update_lbd( new_lbd );
+
+        // std::cout << "lbd computed\n";
 
         // find next clause to resolve with
-        while ( !seen[trail[ind].var()] ) { ind--; };
+        while ( !seen[trail[ind].var()] ) { --ind; };
 
         uip = trail[ind];
         seen[uip.var()] = 0;
         lits_remaining--;
 
+        // log.log() << "uip: " << uip << "\n";
+
+        // std::cout << "uip found\n";
 
         confl_idx = reasons[ind];
 
     } while (lits_remaining > 0);
+
+    // std::cout << "after resolve\n";
 
     learnt_clause[0] = -uip;
     auto to_clear = learnt_clause;
@@ -520,7 +545,7 @@ bool solver::solve() {
         }
 
         decide(var, pol);
-        log_solver_state( "ahojky" );
+        // log_solver_state( "ahojky" );
 
         while ( !unit_propagation() ) {
             if ( decisions.empty() ) {
@@ -537,6 +562,7 @@ bool solver::solve() {
 
             auto [learnt, level] = analyze_conflict();
             decay_var_priority();
+            form.decay_activity();
 
             if ( level == 0 ) {
                 return false;

@@ -11,6 +11,7 @@
 #include <vector>
 #include <unordered_map>
 #include <utility>
+#include <cstdint>
 
 using var_t = int;
 using lbool = std::optional< bool >;
@@ -288,10 +289,17 @@ struct clause {
         UNIT = 3
     };
 
+    enum learnt_type {
+        CORE = 0,
+        MID = 1,
+        LOCAL = 2
+    };
+
     bool learnt;
     clause_status status;
     int lbd;
-    int reason_index = -1;
+    int_fast8_t reason_index = -1;
+    learnt_type type;
     
     /* last conflict */
     int last_conflict;
@@ -302,6 +310,14 @@ struct clause {
      : learnt(_learnt), data(std::move(_data)), lbd(_lbd), last_conflict(conf_ctr) {
         if ( learnt ) {
             status = UNIT;
+            
+            if ( lbd <= 3 ) {
+                type = CORE;
+            } else if ( lbd <= 6 ) {
+                type = MID;
+            } else {
+                type = LOCAL;
+            }
         }
         else if ( data.empty() ) {
             status = CONFLICT;
@@ -323,100 +339,39 @@ struct clause {
         }
     }
 
+    /* if smaller -> update */
+    void update_lbd( int new_lbd ) {
+        lbd = std::min( lbd, new_lbd );
+        if ( lbd <= 3 ) {
+            type = CORE;
+        } else if ( lbd <= 6 ) {
+            type = MID;
+        } else {
+            type = LOCAL;
+        }
+    }
+
     auto size() const {
         return data.size();
     }
 };
 
-struct learnt_clauses {
-
-    /* demote req */
-    int demote_limit = 30000;
-
-    std::vector< clause > core; // LBD <= 3
-    std::vector< clause > mid; // 3 < LBD <= 6
-    std::vector< clause > local; // LBD > 6
-
-    /* demote if not used in last 30k conflicts
-     * invariant: reasons have been marked */
-    void demote_clauses( int conflict_ctr, int demote_period, std::vector< int >& reasons ) {
-        std::vector< clause > tmp_mid;
-        for ( int i = 0; i < mid.size(); i++ ) {
-            clause& c = mid[i];
-
-            if ( c.reason_index >= 0 && c.last_conflict < conflict_ctr - demote_limit ) {
-                c.last_conflict -= demote_period;
-                local.push_back( std::move(c) );
-            } else {
-                c.last_conflict -= demote_period;
-                tmp_mid.push_back( std::move(c) );
-            }
-        }
-
-        mid = std::move(tmp_mid);
-    }
-
-    /* adds clause based on its lbd */
-    void add_learnt_clause(clause c) {
-        if ( c.lbd <= 3 ) {
-            core.push_back(std::move(c));
-        } else if ( c.lbd <= 6 ) {
-            mid.push_back(std::move(c));
-        } else {
-            local.push_back(std::move(c));
-        }
-    }
-
-    clause& operator[]( std::size_t index ) {
-        if ( index < core.size() ) {
-            return core[index];
-        } else if ( index < core.size() + mid.size() ) {
-            return mid[index - core.size()];
-        } else {
-            return local[index - core.size() - mid.size()];
-        }
-    }
-
-    /* update lbd only if it is smaller */
-    void update_lbd( clause& cl, std::size_t index, int lbd ) {
-        if ( cl.lbd <= lbd ) {
-            return;
-        }
-        cl.lbd = lbd;
-
-        if ( index < core.size() ) {
-            return;
-        } else if ( index < core.size() + mid.size() ) {
-            index -= core.size();
-            if ( lbd <= 3 ) {
-                core.push_back( std::move(mid[index]) );
-                mid.erase( mid.begin() + index );
-            }
-        } else {
-            index -= core.size() - mid.size();
-            if ( lbd <= 3 ) {
-                core.push_back( std::move(local[index]) );
-                local.erase( local.begin() + index );
-            } else if ( lbd <= 6 ) {
-                mid.push_back( std::move(local[index]) );
-                local.erase( local.begin() + index );
-            }
-        }
-
-    }
-
-    auto size() const {
-        return core.size() + mid.size() + local.size();
-    }
-};
-
 struct formula {
     std::vector< clause > base;
-    learnt_clauses learnt;
-
+    std::vector< clause > learnt;
+    std::vector< uint_fast8_t > is_valid;
+    std::vector< int > empty_indices;
+    std::vector< double > activity;
     
     std::size_t clause_count;
     std::size_t var_count;
+    int demote_limit = 30000;
+
+    /* increment for forgetting */
+    double inc = 1;
+
+    /* decay */
+    const double decay = 1.01;
 
     formula( std::vector< clause > _base, std::size_t count_c, std::size_t count_v ) : base(std::move( _base )), 
                                                                                        clause_count( count_c ),
@@ -438,18 +393,183 @@ struct formula {
         }
     }
 
+    bool is_valid_clause( std::size_t index ) const {
+        if ( index < base.size() ) {
+            return 1;
+        } else {
+            return is_valid[index - base.size()];
+        }
+    }
+
     void add_base_clause(clause c) {
         base.push_back(std::move(c));
         clause_count++;
     }
 
-    /* adds clause based on its lbd */
-    void add_learnt_clause(clause c) {
-        learnt.add_learnt_clause(std::move(c));
+    size_t next_index() {
+        if ( empty_indices.size() > 0 ) {
+            size_t idx = empty_indices.back();
+            empty_indices.pop_back();
+            return base.size() + idx;
+        } else {
+            return size();
+        }
+    }
+
+    void add_learnt_clause(clause c, size_t idx) {
+        idx -= base.size();
+        if ( idx < learnt.size() ) {
+            learnt[idx] = std::move(c);
+            is_valid[idx] = 1;
+            activity[idx] = 0;
+        } else {
+            learnt.push_back(std::move(c));
+            is_valid.push_back(1);
+            activity.push_back(0);
+        }
         clause_count++;
     }
 
-    auto size() const {
+    size_t size() const {
         return base.size() + learnt.size();
     }
+
+    /* move mid to local if not used in last 30k conflicts */
+    void demote_clauses( int conflict_ctr, int demote_period ) {
+        for ( clause& c : learnt ) {
+            if ( c.type != clause::MID ) {
+                continue;
+            }
+            
+            if ( c.last_conflict < conflict_ctr - demote_limit) {
+                c.type = clause::LOCAL;
+            }
+            c.last_conflict -= demote_period;
+        }
+    }
+
+    /* increase clause activity */
+    void inc_activity( int idx ) {
+        if ( idx < base.size() ) {
+            return;
+        }
+
+        if ( (activity[idx - base.size()] + inc) > 1e100 ) {
+            for ( double& act : activity ) {
+                act *= 1e-100;
+            }
+            inc *= 1e-100;
+        }
+    }
+
+    /* decay clause activity */
+    void decay_activity() {
+        inc *= decay;
+    }
+
+    /* forget bottom half of LOCAL clauses based on their activity */
+    void forget_clauses( int conflict_idx ) {
+        std::vector< std::pair< double, int > > act;
+        for ( int i = 0; i < learnt.size(); i++ ) {
+            if ( !is_valid_clause(i) || i == conflict_idx ) {
+                continue;
+            }
+
+            clause& c = learnt[i];
+            if ( c.type == clause::LOCAL && c.reason_index == -1 ) {
+                act.emplace_back( activity[i], i );
+            }
+        }
+
+        std::sort( act.begin(), act.end() );
+
+        for ( int i = 0; i < act.size() / 2; i++ ) {
+            int idx = act[i].second;
+            empty_indices.push_back( idx );
+            is_valid[idx] = 0;
+        }
+    }
 };
+
+
+// struct learnt_clauses {
+
+//     /* demote req */
+//     int demote_limit = 30000;
+
+//     std::vector< clause > core; // LBD <= 3
+//     std::vector< clause > mid; // 3 < LBD <= 6
+//     std::vector< clause > local; // LBD > 6
+
+//     /* demote if not used in last 30k conflicts
+//      * invariant: reasons have been marked */
+//     void demote_clauses( int conflict_ctr, int demote_period, std::vector< int >& reasons ) {
+//         std::vector< clause > tmp_mid;
+//         for ( int i = 0; i < mid.size(); i++ ) {
+//             clause& c = mid[i];
+
+//             if ( c.reason_index >= 0 && c.last_conflict < conflict_ctr - demote_limit ) {
+//                 c.last_conflict -= demote_period;
+//                 local.push_back( std::move(c) );
+//             } else {
+//                 c.last_conflict -= demote_period;
+//                 tmp_mid.push_back( std::move(c) );
+//             }
+//         }
+
+//         mid = std::move(tmp_mid);
+//     }
+
+//     /* adds clause based on its lbd */
+//     void add_learnt_clause(clause c) {
+//         if ( c.lbd <= 3 ) {
+//             core.push_back(std::move(c));
+//         } else if ( c.lbd <= 6 ) {
+//             mid.push_back(std::move(c));
+//         } else {
+//             local.push_back(std::move(c));
+//         }
+//     }
+
+//     clause& operator[]( std::size_t index ) {
+//         if ( index < core.size() ) {
+//             return core[index];
+//         } else if ( index < core.size() + mid.size() ) {
+//             return mid[index - core.size()];
+//         } else {
+//             return local[index - core.size() - mid.size()];
+//         }
+//     }
+
+//     /* update lbd only if it is smaller */
+//     void update_lbd( clause& cl, std::size_t index, int lbd ) {
+//         if ( cl.lbd <= lbd ) {
+//             return;
+//         }
+//         cl.lbd = lbd;
+
+//         if ( index < core.size() ) {
+//             return;
+//         } else if ( index < core.size() + mid.size() ) {
+//             index -= core.size();
+//             if ( lbd <= 3 ) {
+//                 core.push_back( std::move(mid[index]) );
+//                 mid.erase( mid.begin() + index );
+//             }
+//         } else {
+//             index -= core.size() - mid.size();
+//             if ( lbd <= 3 ) {
+//                 core.push_back( std::move(local[index]) );
+//                 local.erase( local.begin() + index );
+//             } else if ( lbd <= 6 ) {
+//                 mid.push_back( std::move(local[index]) );
+//                 local.erase( local.begin() + index );
+//             }
+//         }
+
+//     }
+
+//     auto size() const {
+//         return core.size() + mid.size() + local.size();
+//     }
+// };

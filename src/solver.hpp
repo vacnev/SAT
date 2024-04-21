@@ -91,7 +91,7 @@ struct solver {
     double inc = 1;
 
     // decay factor used to multiply the increment
-    double var_decay = 1.01;
+    const double var_decay = 1.01;
 
     void decay_var_priority();
     void increase_var_priority( var_t v );
@@ -142,9 +142,10 @@ struct solver {
         ++conflicts;
 
         if ( conflicts % demote_period == 0 ) {
-            form.learnt.demote_clauses( conflict_ctr, demote_period, reasons );
+            form.demote_clauses( conflict_ctr, demote_period );
         } else if ( conflict_ctr % forget_period == 0 ) {
-            form.learnt.forget_clauses();
+            std::cout << "forgetting clauses" << std::endl;
+            form.forget_clauses( conflict_idx );
         }
     }
 
@@ -173,7 +174,7 @@ struct solver {
     void initialize_structures();
 
     void add_base_clause(clause c);
-    void add_learnt_clause(clause c);
+    void add_learnt_clause(clause c, size_t clref);
 
     /**
      * MODEL OUTPUT/TESTING functions
@@ -183,7 +184,7 @@ struct solver {
     void output_model( const std::string &filename );
 
     void log_solver_state( const std::string &title, bool all_clauses );
-    void log_clause( const clause &c, const std::string &title );
+    void log_clause( const clause &c, const std::string &title, auto idx );
 
 
 
