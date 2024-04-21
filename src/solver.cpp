@@ -252,7 +252,8 @@ bool solver::unit_propagation() {
         int j = 0;
         for ( int i = 0; i < clause_indices.size(); ++i ) {
 
-            if ( !form.is_valid_clause( clause_indices[i] ) ) {
+            auto [w1, w2] = watches[clause_indices[i]];
+            if ( w1 != lit && w2 != lit ) {
                 continue;
             }
 
@@ -413,17 +414,11 @@ std::pair< clause, int > solver::analyze_conflict() {
     // stores index of currently resolved clause, starts with conflict clause
     int confl_idx = conflict_idx;
 
-    // std::cout << "before resolve\n";
-
     /* repeatedly resolve away literals until first uip
      * the seen map stores literals that are present in the final clause
      */
     do {
-        // std::cout << "before form.inc_activity " << confl_idx << "\n";
-        // log_clause( form[confl_idx], "conflict", confl_idx );
         form.inc_activity( confl_idx );
-
-        // std::cout << "resolving\n";
 
         for ( lit_t& l : form[confl_idx].data ) {
 
@@ -443,13 +438,9 @@ std::pair< clause, int > solver::analyze_conflict() {
             }
         }
 
-        // std::cout << "after resolving\n";
-
         int new_lbd = compute_lbd( form[confl_idx].data );
         form[confl_idx].last_conflict = conflict_ctr;
         form[confl_idx].update_lbd( new_lbd );
-
-        // std::cout << "lbd computed\n";
 
         // find next clause to resolve with
         while ( !seen[trail[ind].var()] ) { --ind; };
@@ -458,15 +449,9 @@ std::pair< clause, int > solver::analyze_conflict() {
         seen[uip.var()] = 0;
         lits_remaining--;
 
-        // log.log() << "uip: " << uip << "\n";
-
-        // std::cout << "uip found\n";
-
         confl_idx = reasons[ind];
 
     } while (lits_remaining > 0);
-
-    // std::cout << "after resolve\n";
 
     learnt_clause[0] = -uip;
     auto to_clear = learnt_clause;

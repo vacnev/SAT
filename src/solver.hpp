@@ -144,7 +144,6 @@ struct solver {
         if ( conflicts % demote_period == 0 ) {
             form.demote_clauses( conflict_ctr, demote_period );
         } else if ( conflict_ctr % forget_period == 0 ) {
-            std::cout << "forgetting clauses" << std::endl;
             form.forget_clauses( conflict_idx );
         }
     }
