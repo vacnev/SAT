@@ -1,7 +1,7 @@
 #include "solver.hpp"
 #include <cassert>
 
-void solver::initialize_clause( const clause& cl, int clref ) {
+void solver::initialize_clause( clause& cl, int clref ) {
 
     lit_t l1 = cl.data[0];
     lit_t l2 = cl.data[ ( cl.size() > 1 ) ];
@@ -22,6 +22,7 @@ void solver::initialize_clause( const clause& cl, int clref ) {
 
         assign( l1.var(), l1.pol() );
         reasons.push_back( clref );
+        cl.reason_index = reasons.size() - 1;
     }
 
     // init occurs vecs
@@ -182,6 +183,7 @@ void solver::restart() {
 
     for ( int k = index ; k < trail.size(); ++k ) {
         unassign( trail[k].var() );
+        form[reasons[k]].reason_index = -1;
     }
 
     trail.resize( index );
@@ -316,6 +318,7 @@ bool solver::unit_propagation() {
             if ( asgn.lit_unassigned( l2 ) ) {
                 assign( l2.var(), l2.pol() );
                 reasons.push_back( clause_idx );
+                c.reason_index = reasons.size() - 1;
             }
 
             /* if the second watch is unsat
@@ -364,6 +367,7 @@ void solver::backjump( int level, clause learnt ) {
 
     for ( int k = next_level ; k < trail.size(); ++k ) {
         unassign( trail[k].var() );
+        form[reasons[k]].reason_index = -1;
     }
 
     // adjust trail accordingly
@@ -377,6 +381,15 @@ void solver::backjump( int level, clause learnt ) {
 
     // set head of propagation queue to last
     index = trail.size() - 1;
+}
+
+int compute_lbd( const std::vector< lit_t > &lits ) {
+    std::unordered_set< int > lvl_set;
+    for ( lit_t l : lits ) {
+        lvl_set.insert( l.var() );
+    }
+
+    return lvl_set.size();
 }
 
 std::pair< clause, int > solver::analyze_conflict() {
@@ -396,7 +409,6 @@ std::pair< clause, int > solver::analyze_conflict() {
      * the seen map stores literals that are present in the final clause
      */
     do {
-
         for ( lit_t& l : form[confl_idx].data ) {
 
             var_t lvar = l.var();
@@ -415,6 +427,9 @@ std::pair< clause, int > solver::analyze_conflict() {
             }
         }
 
+        int new_lbd = compute_lbd( form[confl_idx].data );
+        form[confl_idx].last_conflict = conflict_ctr;
+        form.learnt.update_lbd( form[confl_idx], confl_idx - form.base.size(), new_lbd );
 
         // find next clause to resolve with
         while ( !seen[trail[ind].var()] ) { ind--; };
@@ -452,6 +467,9 @@ std::pair< clause, int > solver::analyze_conflict() {
     learnt_clause.resize(j);
     learnt_clause.shrink_to_fit();
 
+    // compute LBD
+    int lbd = compute_lbd( learnt_clause );
+
     // find backjump level
     int backjump_level = -1;
     if ( learnt_clause.size() > 1 ) {
@@ -473,7 +491,7 @@ std::pair< clause, int > solver::analyze_conflict() {
     }
 
     // construct clause ( init watches to UIP & highest DL literal )
-    clause learnt( std::move(learnt_clause), true );
+    clause learnt( std::move(learnt_clause), true, lbd, conflict_ctr );
 
     return { learnt, backjump_level };
 }
@@ -509,7 +527,7 @@ bool solver::solve() {
                 return false;
             }
 
-            ++conflicts;
+            inc_conflict_ctr();
             if ( conflicts >= restart_limit ) {
                 restart();
                 break;
