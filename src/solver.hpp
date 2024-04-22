@@ -2,6 +2,7 @@
 #include "logger.hpp"
 #include <fstream>
 #include <random>
+#include <unordered_set>
 
 struct solver {
 
@@ -90,7 +91,7 @@ struct solver {
     double inc = 1;
 
     // decay factor used to multiply the increment
-    double var_decay = 1.01;
+    const double var_decay = 1 / 0.95;
 
     void decay_var_priority();
     void increase_var_priority( var_t v );
@@ -123,7 +124,30 @@ struct solver {
     /* restart */
     void restart();
 
+    /* FORGETTING CLAUSES */
 
+    /* local forgetting period */
+    int forget_period = 30000;
+
+    /* mid demotion check period */
+    int demote_period = 10000;
+
+    /* conflict ctr (max. 30k) */
+    int conflict_ctr = 1;
+
+    void inc_conflict_ctr() {
+        if (++conflict_ctr > 30000) {
+            conflict_ctr = 1;
+        }
+        ++conflicts;
+
+        if ( conflicts % demote_period == 0 ) {
+            form.demote_clauses( conflict_ctr, demote_period );
+        } else if ( conflict_ctr % forget_period == 0 ) {
+            forget_period = 15000;
+            form.forget_clauses( conflict_idx );
+        }
+    }
 
     /**
      * CONSTRUCTORS
@@ -146,11 +170,11 @@ struct solver {
      */
 
     // initialize _occurs_, check empty / unit clauses before solve()
-    void initialize_clause( const clause& cl, int clref );
+    void initialize_clause( clause& cl, int clref );
     void initialize_structures();
 
     void add_base_clause(clause c);
-    void add_learnt_clause(clause c);
+    void add_learnt_clause(clause c, size_t clref);
 
     /**
      * MODEL OUTPUT/TESTING functions
@@ -160,7 +184,7 @@ struct solver {
     void output_model( const std::string &filename );
 
     void log_solver_state( const std::string &title, bool all_clauses );
-    void log_clause( const clause &c, const std::string &title );
+    void log_clause( const clause &c, const std::string &title, auto idx );
 
 
 
@@ -177,6 +201,8 @@ struct solver {
     bool rand_pol() {
         return rng() % 2;
     }
+
+    int compute_lbd( const std::vector< lit_t >& lits );
 
     // assigns val v to variable x, adds new decision level to _decisions_
     void decide( var_t x, bool v );
