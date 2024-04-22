@@ -371,7 +371,7 @@ struct formula {
     double inc = 1;
 
     /* decay */
-    const double decay = 1.01;
+    const double decay = 1 / 0.95;
 
     formula( std::vector< clause > _base, std::size_t count_c, std::size_t count_v ) : base(std::move( _base )), 
                                                                                        clause_count( count_c ),
@@ -491,86 +491,3 @@ struct formula {
         }
     }
 };
-
-
-// struct learnt_clauses {
-
-//     /* demote req */
-//     int demote_limit = 30000;
-
-//     std::vector< clause > core; // LBD <= 3
-//     std::vector< clause > mid; // 3 < LBD <= 6
-//     std::vector< clause > local; // LBD > 6
-
-//     /* demote if not used in last 30k conflicts
-//      * invariant: reasons have been marked */
-//     void demote_clauses( int conflict_ctr, int demote_period, std::vector< int >& reasons ) {
-//         std::vector< clause > tmp_mid;
-//         for ( int i = 0; i < mid.size(); i++ ) {
-//             clause& c = mid[i];
-
-//             if ( c.reason_index >= 0 && c.last_conflict < conflict_ctr - demote_limit ) {
-//                 c.last_conflict -= demote_period;
-//                 local.push_back( std::move(c) );
-//             } else {
-//                 c.last_conflict -= demote_period;
-//                 tmp_mid.push_back( std::move(c) );
-//             }
-//         }
-
-//         mid = std::move(tmp_mid);
-//     }
-
-//     /* adds clause based on its lbd */
-//     void add_learnt_clause(clause c) {
-//         if ( c.lbd <= 3 ) {
-//             core.push_back(std::move(c));
-//         } else if ( c.lbd <= 6 ) {
-//             mid.push_back(std::move(c));
-//         } else {
-//             local.push_back(std::move(c));
-//         }
-//     }
-
-//     clause& operator[]( std::size_t index ) {
-//         if ( index < core.size() ) {
-//             return core[index];
-//         } else if ( index < core.size() + mid.size() ) {
-//             return mid[index - core.size()];
-//         } else {
-//             return local[index - core.size() - mid.size()];
-//         }
-//     }
-
-//     /* update lbd only if it is smaller */
-//     void update_lbd( clause& cl, std::size_t index, int lbd ) {
-//         if ( cl.lbd <= lbd ) {
-//             return;
-//         }
-//         cl.lbd = lbd;
-
-//         if ( index < core.size() ) {
-//             return;
-//         } else if ( index < core.size() + mid.size() ) {
-//             index -= core.size();
-//             if ( lbd <= 3 ) {
-//                 core.push_back( std::move(mid[index]) );
-//                 mid.erase( mid.begin() + index );
-//             }
-//         } else {
-//             index -= core.size() - mid.size();
-//             if ( lbd <= 3 ) {
-//                 core.push_back( std::move(local[index]) );
-//                 local.erase( local.begin() + index );
-//             } else if ( lbd <= 6 ) {
-//                 mid.push_back( std::move(local[index]) );
-//                 local.erase( local.begin() + index );
-//             }
-//         }
-
-//     }
-
-//     auto size() const {
-//         return core.size() + mid.size() + local.size();
-//     }
-// };

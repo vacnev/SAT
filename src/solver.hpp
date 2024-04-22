@@ -91,7 +91,7 @@ struct solver {
     double inc = 1;
 
     // decay factor used to multiply the increment
-    const double var_decay = 1.01;
+    const double var_decay = 1 / 0.95;
 
     void decay_var_priority();
     void increase_var_priority( var_t v );
