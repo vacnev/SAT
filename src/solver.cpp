@@ -212,7 +212,7 @@ var_t solver::get_unassigned( bool& polarity ) {
         switch ( asgn.decision_count / 100 ) {
             case 0:
                 pol = *saved;
-                --asgn.decision_count;
+                asgn.decision_count -= 3;
                 break;
             case 1:
                 pol = !*saved;
@@ -225,7 +225,7 @@ var_t solver::get_unassigned( bool& polarity ) {
         }
     }
 
-    asgn.decision_count += 2;
+    asgn.decision_count += 4;
 
     if ( asgn.decision_count >= asgn.period ) {
         asgn.decision_count = 0;

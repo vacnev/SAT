@@ -360,8 +360,8 @@ struct formula {
     std::vector< clause > base;
     std::vector< clause > learnt;
     std::vector< uint_fast8_t > is_valid;
-    std::vector< int > empty_indices;
     std::vector< double > activity;
+    std::vector< int > empty_indices;
     
     std::size_t clause_count;
     std::size_t var_count;
