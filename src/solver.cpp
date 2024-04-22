@@ -53,11 +53,15 @@ std::vector< bool > solver::get_model() {
 
 std::string solver::get_model_string() {
     auto model = get_model();
-    std::string model_str;
+    std::string model_str = "v LITERALS ";
     for ( int i = 1; i <= model.size(); ++i ){
-        model_str += std::to_string( i ) + " : " + std::to_string( model[i-1] ) + "\n";
-        
+        std::string var_str = std::to_string(i) + " ";
+        if ( !model[i-1] ) { var_str = "-" + var_str; }
+
+        model_str += var_str;
     }
+
+    model_str += "0 \n";
     return model_str;        
 }
 
@@ -508,8 +512,6 @@ std::pair< clause, int > solver::analyze_conflict() {
 
 bool solver::solve() {
 
-    // log.set_log_level( log_level::TRACE );
-
     if ( unsat ) {
         return false;
     }
@@ -529,7 +531,6 @@ bool solver::solve() {
         }
 
         decide(var, pol);
-        // log_solver_state( "ahojky" );
 
         while ( !unit_propagation() ) {
             if ( decisions.empty() ) {
@@ -557,7 +558,6 @@ bool solver::solve() {
             }
 
             backjump( level, std::move( learnt ) );
-            log_solver_state( "after_conflict" );
         }
     }
 

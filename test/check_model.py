@@ -4,12 +4,13 @@ import sys
 def parse_model( model_file ):
     var = dict()
     with open(model_file) as mf:
-        lines = mf.readlines()
+        line = mf.readline()
 
-        for line in lines:
-            words = line.split(':')
-            var[words[0].strip()] = words[1].strip()
-
+        words = line.split(' ')
+        for litstr in words[2:-2]:
+            lit = int(litstr)
+            var[str(abs(lit))] = lit > 0
+            
     return var
 
 def parse_dimacs( filename ):
@@ -54,7 +55,7 @@ def verify_model( filename, model_file ):
 
             var = literal[(neg * 1):]
             val = model[var]
-            sat = sat or ( neg and val == '0' ) or ( not neg and val == '1' )
+            sat = sat or ( neg and not val ) or ( not neg and val )
 
         if not sat:
             print( clause )

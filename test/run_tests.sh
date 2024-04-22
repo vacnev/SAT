@@ -1,13 +1,14 @@
 start=`date +%s`
 for f in ./all_satisfiable/*; do
 	../build/fousaty $f;
-  	# python3 check_model.py "model_file.txt" $f 
+ 	# python3 check_model.py "model_file.txt" $f 
 done
 
 ends=`date +%s`
 
 for f in ./all_satisfiable_100/*; do
 	../build/fousaty $f
+ 	# python3 check_model.py "model_file.txt" $f 
 done
 
 ends100=`date +%s`
@@ -30,6 +31,7 @@ echo "------ BIG FAT SAT ------"
 
 for f in ./all_satisfiable_200/*; do
 	../build/fousaty $f
+ 	# python3 check_model.py "model_file.txt" $f 
 done
 ends200=`date +%s`
 
