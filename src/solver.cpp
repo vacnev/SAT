@@ -252,14 +252,13 @@ bool solver::unit_propagation() {
         int j = 0;
         for ( int i = 0; i < clause_indices.size(); ++i ) {
 
-            auto [w1, w2] = watches[clause_indices[i]];
-            if ( w1 != lit && w2 != lit ) {
+            int clause_idx = clause_indices[i];
+            auto [l1, l2] = watches[clause_idx];
+            if ( (l1 != lit && l2 != lit) || !form.is_valid_clause( clause_idx ) ) {
                 continue;
             }
 
             bool swapped = false;
-            int clause_idx = clause_indices[i];
-            auto [l1, l2] = watches[clause_idx];
             
             if ( lit != l1 ) {
                 l2 = l1;

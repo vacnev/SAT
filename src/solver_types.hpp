@@ -436,8 +436,9 @@ struct formula {
 
     /* move mid to local if not used in last 30k conflicts */
     void demote_clauses( int conflict_ctr, int demote_period ) {
-        for ( clause& c : learnt ) {
-            if ( c.type != clause::MID ) {
+        for ( int i = 0; i < learnt.size(); i++ ) {
+            clause& c = learnt[i];
+            if ( !is_valid_clause(i) || c.type != clause::MID ) {
                 continue;
             }
             
