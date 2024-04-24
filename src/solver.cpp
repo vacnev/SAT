@@ -423,7 +423,9 @@ std::pair< clause, int > solver::analyze_conflict() {
     do {
         form.inc_activity( confl_idx );
 
-        for ( lit_t& l : form[confl_idx].data ) {
+        clause& confl = form[confl_idx];
+
+        for ( lit_t& l : confl.data ) {
 
             var_t lvar = l.var();
             if ( ( l != uip ) && levels[lvar] > 0 && !seen[lvar] ) {
@@ -441,9 +443,9 @@ std::pair< clause, int > solver::analyze_conflict() {
             }
         }
 
-        int new_lbd = compute_lbd( form[confl_idx].data );
-        form[confl_idx].last_conflict = conflict_ctr;
-        form[confl_idx].update_lbd( new_lbd );
+        int new_lbd = compute_lbd( confl.data );
+        confl.last_conflict = conflict_ctr;
+        confl.update_lbd( new_lbd );
 
         // find next clause to resolve with
         while ( !seen[trail[ind].var()] ) { --ind; };
