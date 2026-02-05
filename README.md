@@ -1,6 +1,6 @@
-# FouSATy
+# Fousaty
 
-![project_photo](FouSATy.png)
+Fousaty is a lightweight SAT solver built for performance in C++.
 
 # Current features:
 	EVSIDS
@@ -20,6 +20,3 @@ To run the solver on a dimacs file, run:
 
 	$ ./fousaty [path-to-dimacs]
 
-# Team:
-- Václav Nevyhoštěný, učo: 514059
-- Vít Unčovský, učo: 514479
